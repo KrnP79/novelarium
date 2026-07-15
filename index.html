@@ -1,0 +1,1391 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Novelarium v0.2 · Control editorial</title>
+  <meta name="description" content="Panel local de control editorial para seudónimos, obras, publicaciones y planificación." />
+  <style>
+    :root {
+      --bg: #fbf8fc;
+      --panel: #ffffff;
+      --panel-soft: #f8f2fb;
+      --sidebar: #ede4f5;
+      --ink: #3f3743;
+      --muted: #7c7280;
+      --line: #e4dce7;
+      --primary: #76558d;
+      --primary-dark: #513a63;
+      --pink: #f3d9e6;
+      --peach: #f7e1d2;
+      --mint: #ddefe7;
+      --blue: #dde9f7;
+      --yellow: #f8efcf;
+      --danger: #c45d68;
+      --shadow: 0 12px 30px rgba(72, 51, 83, .08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { color-scheme: light; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; }
+
+    .app { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: var(--sidebar);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      border-right: 1px solid rgba(81,58,99,.08);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,.62);
+      border-radius: 18px;
+    }
+    .brand-mark {
+      width: 42px; height: 42px;
+      display: grid; place-items: center;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--pink), var(--blue));
+      color: var(--primary-dark);
+      font-family: Georgia, serif;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .brand strong { display: block; color: var(--primary-dark); letter-spacing: .05em; font-size: 14px; }
+    .brand span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+    .nav { display: grid; gap: 7px; }
+    .nav-btn {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border-radius: 13px;
+      text-align: left;
+    }
+    .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,.78); color: var(--primary-dark); }
+    .nav-btn.active { font-weight: 700; box-shadow: 0 4px 18px rgba(81,58,99,.05); }
+    .nav-icon { width: 22px; text-align: center; color: var(--primary); }
+
+    .sidebar-card {
+      margin-top: auto;
+      background: rgba(255,255,255,.62);
+      padding: 14px;
+      border-radius: 16px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .sidebar-card strong { color: var(--primary-dark); display: block; margin-bottom: 5px; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #82b89c; display: inline-block; margin-right: 6px; }
+
+    .main { min-width: 0; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(12px);
+      background: rgba(251,248,252,.9);
+      border-bottom: 1px solid rgba(228,220,231,.8);
+      padding: 22px 34px 18px;
+    }
+    .topbar-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+    .title h1 { margin: 0; font-size: 28px; color: var(--primary-dark); }
+    .title p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+    .top-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    .search { min-width: 280px; }
+
+    .content { padding: 28px 34px 48px; max-width: 1550px; margin: 0 auto; }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 10px 14px;
+      background: var(--primary);
+      color: white;
+      font-weight: 700;
+    }
+    .btn:hover { filter: brightness(.97); }
+    .btn.secondary { background: white; color: var(--primary-dark); border-color: var(--line); }
+    .btn.soft { background: var(--panel-soft); color: var(--primary-dark); border-color: var(--line); }
+    .btn.danger { background: #fff5f6; color: var(--danger); border-color: #f0cdd2; }
+    .btn.small { padding: 7px 10px; border-radius: 10px; font-size: 12px; }
+    .icon-btn {
+      width: 38px; height: 38px; border-radius: 12px;
+      border: 1px solid var(--line); background: white; color: var(--primary-dark);
+      display: grid; place-items: center;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--ink);
+      border-radius: 11px;
+      padding: 10px 11px;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: #b89fc7; box-shadow: 0 0 0 3px rgba(118,85,141,.1); }
+    textarea { resize: vertical; min-height: 90px; }
+    label { display: grid; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 700; }
+
+    .grid { display: grid; gap: 18px; }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .card.pad { padding: 20px; }
+    .card-head { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .card-head h2, .section-head h2 { margin: 0; font-size: 18px; }
+    .card-body { padding: 18px 20px; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 28px 0 14px; }
+    .section-head p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+
+    .metric { padding: 18px; display: grid; grid-template-columns: 42px 1fr; gap: 14px; align-items: center; }
+    .metric-dot { width: 38px; height: 38px; border-radius: 50%; }
+    .metric-label { display:block; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+    .metric-value { display:block; font-size: 27px; font-weight: 800; color: var(--primary-dark); line-height: 1.1; margin-top:2px; }
+    .metric-sub { display:block; font-size: 12px; color: var(--muted); margin-top:2px; }
+
+    .split { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; }
+    .attention-list, .milestone-list, .task-list { display: grid; gap: 10px; }
+    .attention-item, .milestone-item, .task-item {
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 12px;
+      background: #fff;
+    }
+    .attention-item strong, .milestone-item strong, .task-item strong { display: block; font-size: 13px; }
+    .attention-item span, .milestone-item span, .task-item span { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .attention-item.warning { background: #fffaf0; border-color: #efe0b0; }
+
+    .chart-bars { display: grid; gap: 12px; }
+    .chart-row { display: grid; grid-template-columns: 145px minmax(0,1fr) 42px; gap: 10px; align-items: center; }
+    .chart-row label { color: var(--ink); font-size: 12px; }
+    .bar-track { height: 12px; border-radius: 99px; background: #f0eaf1; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: inherit; min-width: 0; }
+    .chart-count { text-align: right; color: var(--primary-dark); font-weight: 800; font-size: 12px; }
+
+    .projects { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+    .project-card { padding: 16px; }
+    .project-top { display: flex; gap: 12px; align-items: flex-start; }
+    .cover-placeholder { width: 56px; height: 76px; border-radius: 10px; flex: 0 0 auto; display: grid; place-items: center; color: var(--primary-dark); font-weight: 800; }
+    .project-card h3 { margin: 0; font-size: 16px; }
+    .project-meta { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 99px; padding: 5px 9px; font-size: 10px; font-weight: 800; }
+    .progress { height: 10px; background: #f0eaf1; border-radius: 99px; overflow: hidden; margin: 16px 0 7px; }
+    .progress > span { display: block; height: 100%; background: var(--primary); border-radius: inherit; }
+    .project-note { color: var(--muted); font-size: 11px; min-height: 32px; }
+
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .toolbar .grow { flex: 1; min-width: 220px; }
+
+    .catalog-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+    .book-card { position: relative; padding: 16px; overflow: hidden; }
+    .book-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--book-color, var(--primary)); }
+    .book-card h3 { margin: 0; font-size: 16px; }
+    .book-card .sub { color: var(--muted); font-size: 11px; margin-top: 5px; }
+    .book-card .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+    .tag { background: var(--panel-soft); color: var(--primary-dark); border: 1px solid var(--line); padding: 4px 7px; border-radius: 99px; font-size: 10px; }
+    .book-card footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; }
+
+    .pipeline { display: grid; grid-template-columns: repeat(7, minmax(230px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 10px; }
+    .column { min-height: 270px; background: rgba(255,255,255,.5); border: 1px solid var(--line); border-radius: 16px; }
+    .column-head { padding: 12px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 800; }
+    .column-body { padding: 10px; display: grid; gap: 9px; }
+    .mini-card { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 11px; }
+    .mini-card strong { font-size: 12px; display: block; }
+    .mini-card span { color: var(--muted); font-size: 10px; display: block; margin-top: 4px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 980px; }
+    th { text-align: left; font-size: 10px; color: var(--muted); letter-spacing: .06em; padding: 11px; border-bottom: 1px solid var(--line); }
+    td { padding: 12px 11px; border-bottom: 1px solid var(--line); font-size: 12px; vertical-align: top; }
+    tr:hover td { background: #fcf9fd; }
+    .link { color: var(--primary); text-decoration: none; font-weight: 700; }
+
+    .empty { padding: 36px; text-align: center; color: var(--muted); border: 1px dashed #cfc3d4; border-radius: 16px; background: rgba(255,255,255,.55); }
+    .empty strong { color: var(--primary-dark); display: block; margin-bottom: 5px; }
+
+    .modal-backdrop {
+      display: none;
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(45,33,50,.42);
+      align-items: flex-start; justify-content: center;
+      padding: 32px 16px;
+      overflow-y: auto;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal { width: min(760px, 100%); background: white; border-radius: 20px; box-shadow: 0 30px 80px rgba(40,28,48,.24); overflow: hidden; }
+    .modal-head { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .modal-head h3 { margin: 0; }
+    .modal-body { padding: 20px; display: grid; gap: 15px; }
+    .modal-foot { padding: 14px 20px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+    .span-2 { grid-column: 1 / -1; }
+
+    .notice { border: 1px solid #d7c8df; background: #faf6fc; color: var(--primary-dark); padding: 12px 14px; border-radius: 13px; font-size: 12px; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 1180px) {
+      .grid.cols-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .projects, .catalog-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .split { grid-template-columns: 1fr; }
+    }
+
+    .metric-button { width: 100%; text-align: left; appearance: none; color: inherit; transition: .2s ease; }
+    .metric-button:hover { transform: translateY(-2px); border-color: #cdbbd7; box-shadow: 0 15px 34px rgba(72,51,83,.13); }
+    .metric-button:focus-visible, .chart-action:focus-visible { outline: 3px solid rgba(118,85,141,.2); outline-offset: 2px; }
+    .chart-action { border: 0; background: transparent; width: 100%; padding: 0; color: inherit; text-align: left; }
+    .chart-action:hover .bar-track { box-shadow: 0 0 0 2px rgba(118,85,141,.12); }
+    .actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    .action-link { border: 0; background: transparent; color: var(--primary-dark); padding: 5px 2px; font-size: 11px; font-weight: 800; }
+    .action-link:hover { text-decoration: underline; }
+    .menu { position: relative; }
+    .menu > summary { list-style: none; cursor: pointer; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 10px; background: white; font-weight: 800; }
+    .menu > summary::-webkit-details-marker { display: none; }
+    .menu-panel { position: absolute; right: 0; top: 40px; z-index: 30; min-width: 190px; padding: 7px; background: white; border: 1px solid var(--line); border-radius: 13px; box-shadow: 0 18px 45px rgba(50,36,58,.18); display: grid; gap: 3px; }
+    .menu-panel button { border: 0; background: transparent; text-align: left; padding: 9px 10px; border-radius: 9px; color: var(--ink); font-size: 12px; }
+    .menu-panel button:hover { background: var(--panel-soft); }
+    .menu-panel .danger-text { color: var(--danger); }
+    .publication-groups { display: grid; gap: 16px; }
+    .publication-group { background: white; border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
+    .publication-group-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 18px; background: linear-gradient(90deg, var(--panel-soft), #fff); border-bottom: 1px solid var(--line); }
+    .publication-group-head h3 { margin: 0; font-size: 16px; }
+    .publication-group-head p { margin: 4px 0 0; font-size: 11px; color: var(--muted); }
+    .publication-list { display: grid; }
+    .publication-row { display: grid; grid-template-columns: minmax(130px,1fr) minmax(170px,1.4fr) 130px 155px 120px minmax(220px,auto); gap: 12px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+    .publication-row:last-child { border-bottom: 0; }
+    .publication-row.archived-row { opacity: .62; background: #faf8fa; }
+    .publication-cell strong { display: block; font-size: 12px; }
+    .publication-cell span { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .inline-select { padding: 7px 9px; font-size: 11px; min-width: 130px; }
+    .serial-progress { font-size: 11px; color: var(--muted); }
+    .empty-inline { padding: 18px; color: var(--muted); font-size: 12px; text-align: center; }
+    .history-list { display: grid; gap: 10px; }
+    .history-item { display: grid; grid-template-columns: 150px 110px minmax(0,1fr); gap: 12px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 13px; background: white; }
+    .history-time, .history-type { color: var(--muted); font-size: 10px; }
+    .history-summary { font-size: 12px; }
+    .history-summary strong { display: block; margin-bottom: 3px; }
+    .notice.critical { background: #fff4f4; border-color: #efcaca; color: #7f3943; }
+    .toast { position: fixed; right: 24px; bottom: 24px; z-index: 100; background: var(--primary-dark); color: white; border-radius: 13px; padding: 12px 16px; box-shadow: 0 18px 45px rgba(50,36,58,.25); opacity: 0; transform: translateY(15px); pointer-events: none; transition: .2s ease; font-size: 12px; max-width: 360px; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .hidden { display: none !important; }
+    @media (max-width: 820px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; }
+      .brand { width: 100%; }
+      .nav { display: flex; overflow-x: auto; width: 100%; }
+      .nav-btn { width: auto; white-space: nowrap; }
+      .sidebar-card { display: none; }
+      .topbar { position: static; padding: 18px; }
+      .topbar-row { align-items: flex-start; flex-direction: column; }
+      .top-actions { width: 100%; justify-content: flex-start; }
+      .search { min-width: 0; flex: 1; }
+      .content { padding: 20px 18px 40px; }
+      .grid.cols-4, .grid.cols-3, .grid.cols-2, .projects, .catalog-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .publication-row { grid-template-columns: 1fr; }
+      .publication-group-head { align-items:flex-start; flex-direction:column; }
+      .history-item { grid-template-columns:1fr; }
+      .span-2 { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">N</div>
+        <div><strong>NOVELARIUM</strong><span>Control editorial</span></div>
+      </div>
+
+      <nav class="nav" aria-label="Navegación principal">
+        <button class="nav-btn active" data-view="dashboard"><span class="nav-icon">⌂</span>Inicio</button>
+        <button class="nav-btn" data-view="catalog"><span class="nav-icon">▦</span>Catálogo</button>
+        <button class="nav-btn" data-view="pipeline"><span class="nav-icon">↳</span>Pipeline</button>
+        <button class="nav-btn" data-view="publications"><span class="nav-icon">◎</span>Publicaciones</button>
+        <button class="nav-btn" data-view="planning"><span class="nav-icon">✓</span>Planificación</button>
+        <button class="nav-btn" data-view="history"><span class="nav-icon">◴</span>Historial</button>
+        <button class="nav-btn" data-view="backup"><span class="nav-icon">↥</span>Respaldos</button>
+        <button class="nav-btn" data-view="settings"><span class="nav-icon">⚙</span>Seudónimos</button>
+      </nav>
+
+      <div class="sidebar-card">
+        <strong>Estado de los datos</strong>
+        <span><i class="status-dot"></i>Guardado automático activo</span>
+        <div id="lastSavedText" style="margin-top:8px">Sin cambios todavía</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-row">
+          <div class="title">
+            <h1 id="pageTitle">Panel de control editorial</h1>
+            <p id="pageSubtitle">Una vista clara de tus obras, fechas, contratos y publicaciones.</p>
+          </div>
+          <div class="top-actions">
+            <select id="globalPenFilter" aria-label="Filtrar por seudónimo"></select>
+            <input id="globalSearch" class="search" type="search" placeholder="Buscar obra, plataforma o serie…" />
+            <button class="btn secondary" id="quickBackup">Crear respaldo</button>
+            <button class="btn secondary" id="quickAddPublication">+ Publicación</button>
+            <button class="btn" id="quickAddBook">+ Obra</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="view active" id="view-dashboard">
+          <div class="grid cols-4" id="metricsGrid"></div>
+
+          <div class="section-head">
+            <div><h2>Atención inmediata</h2><p>Primero lo que requiere una decisión, una fecha o una acción.</p></div>
+          </div>
+          <div class="split">
+            <div class="card pad"><div class="attention-list" id="attentionList"></div></div>
+            <div class="card pad">
+              <h2 style="margin-top:0;font-size:18px">Próximos hitos</h2>
+              <div class="milestone-list" id="milestoneList"></div>
+            </div>
+          </div>
+
+          <div class="section-head"><div><h2>Distribución del catálogo</h2><p>Obras agrupadas por estado editorial.</p></div></div>
+          <div class="card pad"><div class="chart-bars" id="statusChart"></div></div>
+
+          <div class="section-head"><div><h2>Proyectos activos</h2><p>Solo los que todavía requieren trabajo editorial.</p></div></div>
+          <div class="projects" id="activeProjects"></div>
+
+          <div class="section-head"><div><h2>Publicaciones y contratos</h2><p>Una vista compacta de plataformas, estados y exclusividad.</p></div></div>
+          <div class="card"><div class="table-wrap"><table>
+            <thead><tr><th>OBRA</th><th>PLATAFORMA</th><th>TÍTULO USADO</th><th>CONTRATO</th><th>ESTADO</th><th>ENLACE</th></tr></thead>
+            <tbody id="dashboardPublications"></tbody>
+          </table></div></div>
+        </section>
+
+        <section class="view" id="view-catalog">
+          <div class="toolbar">
+            <input class="grow" id="catalogSearch" placeholder="Buscar por título o serie" />
+            <select id="catalogStatusFilter"></select>
+            <select id="catalogArchiveFilter"><option value="active">Sin archivar</option><option value="all">Todas</option><option value="archived">Archivadas</option></select>
+            <button class="btn" id="addBookBtn">+ Añadir obra</button>
+          </div>
+          <div class="catalog-grid" id="catalogGrid"></div>
+        </section>
+
+        <section class="view" id="view-pipeline">
+          <div class="notice">El pipeline muestra el <strong>estado editorial de la obra</strong>. Las publicaciones y sus contratos se controlan por separado.</div>
+          <div class="pipeline" id="pipelineBoard" style="margin-top:16px"></div>
+        </section>
+
+        <section class="view" id="view-publications">
+          <div class="toolbar">
+            <input class="grow" id="publicationSearch" placeholder="Buscar plataforma, obra o título alternativo" />
+            <select id="platformFilter"><option value="all">Todas las plataformas</option></select>
+            <select id="contractFilter">
+              <option value="all">Todos los contratos</option>
+              <option value="exclusive">Exclusivo</option>
+              <option value="nonexclusive">No exclusivo</option>
+              <option value="none">Sin contrato</option>
+              <option value="pending">Por confirmar</option>
+              <option value="ended">Finalizado</option>
+            </select>
+            <select id="publicationStatusFilter"><option value="all">Todos los estados</option></select>
+            <select id="publicationSpecialFilter">
+              <option value="all">Todas las publicaciones</option>
+              <option value="multi">Obras en varias plataformas</option>
+              <option value="missingUrl">Sin enlace</option>
+              <option value="expiring">Contrato próximo a vencer</option>
+              <option value="serializing">Publicándose ahora</option>
+              <option value="archived">Archivadas</option>
+            </select>
+            <button class="btn" id="addPublicationBtn">+ Añadir publicación</button>
+          </div>
+          <div class="notice">Cada plataforma se registra como una publicación independiente vinculada a la misma obra. Así puedes controlar títulos, idioma, contrato, avance y enlace sin duplicar el libro.</div>
+          <div class="publication-groups" id="publicationGroups" style="margin-top:16px"></div>
+        </section>
+
+        <section class="view" id="view-planning">
+          <div class="toolbar">
+            <select id="taskStatusFilter">
+              <option value="all">Todas las tareas</option>
+              <option value="pending">Pendientes</option>
+              <option value="done">Completadas</option>
+            </select>
+            <button class="btn" id="addTaskBtn">+ Añadir tarea</button>
+          </div>
+          <div class="grid cols-2">
+            <div class="card pad">
+              <h2 style="margin-top:0;font-size:18px">Esta semana</h2>
+              <div class="task-list" id="weekTasks"></div>
+            </div>
+            <div class="card pad">
+              <h2 style="margin-top:0;font-size:18px">Después</h2>
+              <div class="task-list" id="laterTasks"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="view-history">
+          <div class="toolbar">
+            <input class="grow" id="historySearch" placeholder="Buscar en el historial" />
+            <select id="historyTypeFilter"><option value="all">Todos los tipos</option><option value="book">Obras</option><option value="publication">Publicaciones</option><option value="task">Tareas</option><option value="pen">Seudónimos</option><option value="backup">Respaldos</option></select>
+          </div>
+          <div class="history-list" id="historyList"></div>
+        </section>
+
+        <section class="view" id="view-backup">
+          <div class="grid cols-2">
+            <div class="card pad">
+              <h2 style="margin-top:0">Exportar respaldo</h2>
+              <p style="color:var(--muted);font-size:13px">Descarga un archivo JSON con seudónimos, obras, publicaciones y tareas. Puedes guardarlo en Google Drive.</p>
+              <div class="actions"><button class="btn" id="exportBackupBtn">Descargar respaldo JSON</button><button class="btn secondary" id="exportBooksCsvBtn">Obras CSV</button><button class="btn secondary" id="exportPublicationsCsvBtn">Publicaciones CSV</button></div>
+            </div>
+            <div class="card pad">
+              <h2 style="margin-top:0">Restaurar respaldo</h2>
+              <p style="color:var(--muted);font-size:13px">Importar reemplazará los datos actuales después de crear una copia automática.</p>
+              <input type="file" id="importBackupInput" accept="application/json" />
+            </div>
+          </div>
+          <div class="section-head"><div><h2>Estado</h2></div></div>
+          <div class="card pad" id="backupStatus"></div>
+        </section>
+
+        <section class="view" id="view-settings">
+          <div class="toolbar"><button class="btn" id="addPenBtn">+ Añadir seudónimo</button></div>
+          <div class="grid cols-3" id="penGrid"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="bookModal">
+    <div class="modal">
+      <div class="modal-head"><h3 id="bookModalTitle">Añadir obra</h3><button class="icon-btn" data-close="bookModal">✕</button></div>
+      <form id="bookForm">
+        <div class="modal-body">
+          <input type="hidden" id="bookId" />
+          <div class="form-grid">
+            <label class="span-2">Título de la obra<input id="bookTitle" required /></label>
+            <label>Seudónimo<select id="bookPen" required></select></label>
+            <label>Estado editorial<select id="bookStatus" required></select></label>
+            <label>Serie<input id="bookSeries" placeholder="Opcional" /></label>
+            <label>Número en la serie<input id="bookNumber" type="number" min="1" /></label>
+            <label>Fecha de inicio<input id="bookStart" type="date" /></label>
+            <label>Fecha objetivo / finalización<input id="bookTarget" type="date" /></label>
+            <label>Progreso (%)<input id="bookProgress" type="number" min="0" max="100" value="0" /></label>
+            <label>Subgénero o etiqueta<input id="bookGenre" placeholder="Ej. sport romance" /></label>
+            <label class="span-2">Siguiente acción<input id="bookNextAction" placeholder="Ej. crear brief del capítulo 8" /></label>
+            <label class="span-2">Notas<textarea id="bookNotes"></textarea></label>
+          </div>
+        </div>
+        <div class="modal-foot"><button type="button" class="btn danger hidden" id="archiveBookBtn">Archivar obra</button><div style="display:flex;gap:10px;margin-left:auto"><button type="button" class="btn secondary" data-close="bookModal">Cancelar</button><button class="btn" type="submit">Guardar obra</button></div></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="publicationModal">
+    <div class="modal">
+      <div class="modal-head"><h3 id="publicationModalTitle">Añadir publicación</h3><button class="icon-btn" data-close="publicationModal">✕</button></div>
+      <form id="publicationForm">
+        <div class="modal-body">
+          <input type="hidden" id="publicationId" />
+          <div class="form-grid">
+            <label>Obra<select id="publicationBook" required></select></label>
+            <label>Plataforma<input id="publicationPlatform" required placeholder="Booknet, Buenovela, Amazon…" /></label>
+            <label>Título usado en la plataforma<input id="publicationTitle" placeholder="Si difiere del original" /></label>
+            <label>Idioma<input id="publicationLanguage" value="Español" /></label>
+            <label>Acceso / monetización<select id="publicationMonetization"><option value="paid">Pago</option><option value="free">Gratis</option><option value="mixed">Mixto</option><option value="unknown">Por confirmar</option></select></label>
+            <label>Tipo de contrato<select id="publicationContract" required>
+              <option value="nonexclusive">No exclusivo</option>
+              <option value="exclusive">Exclusivo</option>
+              <option value="none">Sin contrato</option>
+              <option value="pending">Por confirmar</option>
+              <option value="ended">Finalizado</option>
+            </select></label>
+            <label>Estado en plataforma<select id="publicationStatus" required>
+              <option value="planned">Por enviar</option>
+              <option value="review">En revisión</option>
+              <option value="contracted">Contratada</option>
+              <option value="serializing">Publicándose</option>
+              <option value="completed">Completada</option>
+              <option value="published">Publicada retail</option>
+              <option value="paused">Pausada</option>
+              <option value="removed">Retirada</option>
+              <option value="rejected">Rechazada</option>
+            </select></label>
+            <label>Inicio de contrato<input id="publicationContractStart" type="date" /></label>
+            <label>Fin / renovación<input id="publicationContractEnd" type="date" /></label>
+            <label>Capítulos publicados<input id="publicationPublishedChapters" type="number" min="0" /></label>
+            <label>Total de capítulos<input id="publicationTotalChapters" type="number" min="0" /></label>
+            <label>Última actualización<input id="publicationLastUpdate" type="date" /></label>
+            <label class="span-2">Enlace de la novela en la plataforma<input id="publicationUrl" type="url" placeholder="https://…" /></label>
+            <label class="span-2">Notas<textarea id="publicationNotes"></textarea></label>
+          </div>
+        </div>
+        <div class="modal-foot"><button type="button" class="btn danger hidden" id="archivePublicationBtn">Archivar publicación</button><div style="display:flex;gap:10px;margin-left:auto"><button type="button" class="btn secondary" data-close="publicationModal">Cancelar</button><button class="btn" type="submit">Guardar publicación</button></div></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="taskModal">
+    <div class="modal">
+      <div class="modal-head"><h3 id="taskModalTitle">Añadir tarea</h3><button class="icon-btn" data-close="taskModal">✕</button></div>
+      <form id="taskForm">
+        <div class="modal-body">
+          <input type="hidden" id="taskId" />
+          <div class="form-grid">
+            <label class="span-2">Tarea<input id="taskTitle" required /></label>
+            <label>Obra vinculada<select id="taskBook"></select></label>
+            <label>Fecha<input id="taskDate" type="date" /></label>
+            <label>Prioridad<select id="taskPriority"><option value="high">Alta</option><option value="medium" selected>Media</option><option value="low">Baja</option></select></label>
+            <label>Estado<select id="taskStatus"><option value="pending">Pendiente</option><option value="done">Completada</option></select></label>
+            <label class="span-2">Notas<textarea id="taskNotes"></textarea></label>
+          </div>
+        </div>
+        <div class="modal-foot"><button type="button" class="btn danger hidden" id="archiveTaskBtn">Archivar tarea</button><div style="display:flex;gap:10px;margin-left:auto"><button type="button" class="btn secondary" data-close="taskModal">Cancelar</button><button class="btn" type="submit">Guardar tarea</button></div></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="penModal">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-head"><h3 id="penModalTitle">Añadir seudónimo</h3><button class="icon-btn" data-close="penModal">✕</button></div>
+      <form id="penForm">
+        <div class="modal-body">
+          <input type="hidden" id="penId" />
+          <div class="form-grid">
+            <label class="span-2">Nombre<input id="penName" required /></label>
+            <label>Color identificador<input id="penColor" type="color" value="#76558d" /></label>
+            <label>Estado<select id="penState"><option value="active">Activo</option><option value="paused">En pausa</option><option value="archived">Archivado</option></select></label>
+            <label class="span-2">Modelo principal<select id="penModel"><option value="serial">Serializado / multiplataforma</option><option value="retail">Amazon / retail</option><option value="hybrid">Híbrido</option></select></label>
+            <label class="span-2">Plataformas habituales<input id="penPlatforms" placeholder="Separadas por comas" /></label>
+          </div>
+        </div>
+        <div class="modal-foot"><button type="button" class="btn danger hidden" id="deletePenBtn">Eliminar</button><div style="display:flex;gap:10px;margin-left:auto"><button type="button" class="btn secondary" data-close="penModal">Cancelar</button><button class="btn" type="submit">Guardar seudónimo</button></div></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const STORAGE_KEY = 'novelarium_data_v02';
+  const LEGACY_KEYS = ['novelarium_data_v01'];
+  const VERSION = 2;
+
+  const BOOK_STATUS = [
+    { id:'idea', label:'Idea', color:'#e8dff2' },
+    { id:'planning', label:'Planificación', color:'#f3e6f4' },
+    { id:'drafting', label:'Redacción', color:'#f3d9e6' },
+    { id:'editing', label:'Edición', color:'#f7e1d2' },
+    { id:'translation', label:'Traducción', color:'#dde9f7' },
+    { id:'formatting', label:'Formato', color:'#f8efcf' },
+    { id:'ready', label:'Terminada / lista', color:'#ddefe7' }
+  ];
+  const ACTIVE_BOOK_STATUS = new Set(['idea','planning','drafting','editing','translation','formatting']);
+  const PUBLICATION_STATUS = {
+    planned:'Por enviar', review:'En revisión', contracted:'Contratada', serializing:'Publicándose',
+    completed:'Completada en plataforma', preorder:'Preventa', published:'Publicada retail', paused:'Pausada',
+    removed:'Retirada', rejected:'Rechazada'
+  };
+  const CONTRACT = {
+    exclusive:'Exclusivo', nonexclusive:'No exclusivo', none:'Sin contrato', pending:'Por confirmar', ended:'Finalizado'
+  };
+  const MONETIZATION = { paid:'Pago', free:'Gratis', mixed:'Mixto', unknown:'Por confirmar' };
+  const HISTORY_TYPE = { book:'Obra', publication:'Publicación', task:'Tarea', pen:'Seudónimo', backup:'Respaldo' };
+
+  const seed = {
+    version: VERSION,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    penNames: [
+      { id:'mileth', name:'Mileth Pineda', color:'#9b74b3', state:'active', model:'serial', platforms:['Booknet','Buenovela','HopWriter','Dreame','Manobook'] },
+      { id:'sasha', name:'Sasha Lenox', color:'#6e425f', state:'active', model:'retail', platforms:['Amazon'] },
+      { id:'lexi', name:'Lexi Sheridan', color:'#e49ab0', state:'active', model:'retail', platforms:['Amazon'] }
+    ],
+    books: [],
+    publications: [],
+    tasks: [],
+    history: []
+  };
+
+  const $ = selector => document.querySelector(selector);
+  const $$ = selector => [...document.querySelectorAll(selector)];
+  const uid = prefix => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
+  const today = () => new Date().toISOString().slice(0,10);
+  const clone = value => JSON.parse(JSON.stringify(value));
+  const esc = value => String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+  const fmtDate = iso => iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('es-HN',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+  const daysUntil = iso => iso ? Math.ceil((new Date(`${iso}T00:00:00`) - new Date(new Date().toDateString())) / 86400000) : null;
+  const bookById = id => data.books.find(book => book.id === id);
+  const penById = id => data.penNames.find(pen => pen.id === id);
+  const publicationById = id => data.publications.find(pub => pub.id === id);
+  const statusInfo = id => BOOK_STATUS.find(item => item.id === id) || BOOK_STATUS[0];
+  const isActiveBook = book => !book.archived && ACTIVE_BOOK_STATUS.has(book.status);
+  const isLivePublication = pub => !pub.archived && !['removed','rejected'].includes(pub.status);
+
+  let data = loadData();
+  let activeView = 'dashboard';
+  let toastTimer = null;
+
+  function migrate(input) {
+    const base = clone(seed);
+    if (!input || typeof input !== 'object') return base;
+    const next = {
+      ...base,
+      ...input,
+      version: VERSION,
+      penNames: Array.isArray(input.penNames) ? input.penNames.map(p => ({
+        id:p.id || uid('pen'), name:p.name || 'Sin nombre', color:p.color || '#76558d', state:p.state || 'active',
+        model:p.model || 'serial', platforms:Array.isArray(p.platforms) ? p.platforms : []
+      })) : base.penNames,
+      books: Array.isArray(input.books) ? input.books.map(b => ({
+        ...b, id:b.id || uid('book'), status:b.status === 'archived' ? 'ready' : (b.status || 'idea'), archived:Boolean(b.archived || b.status === 'archived')
+      })) : [],
+      publications: Array.isArray(input.publications) ? input.publications.map(p => ({
+        monetization:'unknown', publishedChapters:null, totalChapters:null, lastUpdate:'', archived:false, ...p,
+        id:p.id || uid('pub'), contractType:p.contractType || 'pending', status:p.status || 'planned', archived:Boolean(p.archived)
+      })) : [],
+      tasks: Array.isArray(input.tasks) ? input.tasks.map(t => ({...t,id:t.id || uid('task'),archived:Boolean(t.archived)})) : [],
+      history: Array.isArray(input.history) ? input.history : []
+    };
+    return next;
+  }
+
+  function loadData() {
+    try {
+      const current = localStorage.getItem(STORAGE_KEY);
+      if (current) return migrate(JSON.parse(current));
+      for (const key of LEGACY_KEYS) {
+        const legacy = localStorage.getItem(key);
+        if (legacy) {
+          const migrated = migrate(JSON.parse(legacy));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+          return migrated;
+        }
+      }
+    } catch (error) {
+      console.error('No se pudieron cargar los datos:', error);
+    }
+    return clone(seed);
+  }
+
+  function addHistory(type, action, entityId, summary, details='') {
+    data.history = [{
+      id:uid('hist'), type, action, entityId, summary, details, createdAt:new Date().toISOString()
+    }, ...(data.history || [])].slice(0,1500);
+  }
+
+  function saveData(message='Cambios guardados') {
+    data.updatedAt = new Date().toISOString();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    $('#lastSavedText').textContent = `Último guardado: ${new Date(data.updatedAt).toLocaleString('es-HN')}`;
+    renderAll();
+    if (message) toast(message);
+  }
+
+  function toast(message) {
+    const el = $('#toast');
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2300);
+  }
+
+  function setView(view) {
+    activeView = view;
+    $$('.view').forEach(section => section.classList.toggle('active', section.id === `view-${view}`));
+    $$('.nav-btn').forEach(button => button.classList.toggle('active', button.dataset.view === view));
+    const titles = {
+      dashboard:['Panel de control editorial','Una vista clara de tus obras, fechas, contratos y publicaciones.'],
+      catalog:['Catálogo','Obras organizadas por seudónimo, serie, estado y siguiente acción.'],
+      pipeline:['Pipeline editorial','Mueve las obras por su fase de producción sin mezclar sus publicaciones.'],
+      publications:['Publicaciones','Varias plataformas por obra, con contrato, título, idioma y enlace propios.'],
+      planning:['Planificación','Tareas vinculadas a tus obras y publicaciones.'],
+      history:['Historial','Registro de cambios de estado, publicaciones, tareas y archivo.'],
+      backup:['Respaldos','Exporta, restaura o lleva tus datos a Google Drive.'],
+      settings:['Seudónimos','Administra tus seudónimos y su modelo principal de publicación.']
+    };
+    $('#pageTitle').textContent = titles[view][0];
+    $('#pageSubtitle').textContent = titles[view][1];
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  function currentPenFilter() { return $('#globalPenFilter').value || 'all'; }
+  function globalQuery() { return ($('#globalSearch').value || '').trim().toLowerCase(); }
+  function bookMatchesGlobal(book) {
+    const penFilter = currentPenFilter();
+    if (penFilter !== 'all' && book.penNameId !== penFilter) return false;
+    const q = globalQuery();
+    if (!q) return true;
+    const pubs = data.publications.filter(p => p.bookId === book.id);
+    const haystack = [book.title,book.series,book.genre,book.nextAction,penById(book.penNameId)?.name,...pubs.flatMap(p => [p.platform,p.displayTitle,p.language])].join(' ').toLowerCase();
+    return haystack.includes(q);
+  }
+
+  function filteredBooks(extraQuery='') {
+    const q = extraQuery.trim().toLowerCase();
+    return data.books.filter(book => bookMatchesGlobal(book) && (!q || [book.title,book.series,book.genre].join(' ').toLowerCase().includes(q)));
+  }
+
+  function renderSelectors() {
+    const penOptions = ['<option value="all">Todos los seudónimos</option>', ...data.penNames.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`)].join('');
+    const currentPen = $('#globalPenFilter').value || 'all';
+    $('#globalPenFilter').innerHTML = penOptions;
+    $('#globalPenFilter').value = data.penNames.some(p => p.id === currentPen) ? currentPen : 'all';
+
+    const statusOptions = ['<option value="all">Todos los estados</option>',...BOOK_STATUS.map(s => `<option value="${s.id}">${s.label}</option>`),'<option value="active">Solo activos</option>'].join('');
+    const currentCatalogStatus = $('#catalogStatusFilter').value || 'all';
+    $('#catalogStatusFilter').innerHTML = statusOptions;
+    $('#catalogStatusFilter').value = currentCatalogStatus;
+
+    $('#bookStatus').innerHTML = BOOK_STATUS.map(s => `<option value="${s.id}">${s.label}</option>`).join('');
+    const currentBookPen = $('#bookPen').value;
+    $('#bookPen').innerHTML = data.penNames.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+    if (currentBookPen) $('#bookPen').value = currentBookPen;
+
+    const currentPublicationBook = $('#publicationBook').value;
+    $('#publicationBook').innerHTML = data.books.filter(b => !b.archived).length
+      ? data.books.filter(b => !b.archived).map(b => `<option value="${esc(b.id)}">${esc(b.title)}</option>`).join('')
+      : '<option value="">Primero crea una obra</option>';
+    if (currentPublicationBook) $('#publicationBook').value = currentPublicationBook;
+
+    const currentTaskBook = $('#taskBook').value;
+    $('#taskBook').innerHTML = '<option value="">Sin obra vinculada</option>' + data.books.filter(b => !b.archived).map(b => `<option value="${esc(b.id)}">${esc(b.title)}</option>`).join('');
+    if (currentTaskBook) $('#taskBook').value = currentTaskBook;
+
+    const publicationStatusCurrent = $('#publicationStatusFilter').value || 'all';
+    $('#publicationStatusFilter').innerHTML = '<option value="all">Todos los estados</option>' + Object.entries(PUBLICATION_STATUS).map(([id,label]) => `<option value="${id}">${label}</option>`).join('');
+    $('#publicationStatusFilter').value = publicationStatusCurrent;
+
+    const platformCurrent = $('#platformFilter').value || 'all';
+    const platforms = [...new Set(data.publications.map(p => p.platform).filter(Boolean))].sort((a,b) => a.localeCompare(b,'es'));
+    $('#platformFilter').innerHTML = '<option value="all">Todas las plataformas</option>' + platforms.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+    $('#platformFilter').value = platforms.includes(platformCurrent) ? platformCurrent : 'all';
+  }
+
+  function buildAlerts() {
+    const alerts = [];
+    const now = new Date(new Date().toDateString());
+    filteredBooks().filter(isActiveBook).forEach(book => {
+      if (!book.nextAction?.trim()) alerts.push({kind:'warning',title:`${book.title}: sin siguiente acción`,detail:'Define la acción concreta que desbloquea el proyecto.',action:() => openBook(book)});
+      if (book.targetDate) {
+        const days = daysUntil(book.targetDate);
+        if (days < 0) alerts.push({kind:'warning',title:`${book.title}: fecha objetivo vencida`,detail:`Venció hace ${Math.abs(days)} día${Math.abs(days)===1?'':'s'}.`,action:() => openBook(book)});
+      }
+    });
+
+    data.publications.filter(p => !p.archived).forEach(pub => {
+      const book = bookById(pub.bookId);
+      if (!book || !bookMatchesGlobal(book)) return;
+      if (!pub.url && !['planned','review','rejected'].includes(pub.status)) alerts.push({kind:'warning',title:`${book.title} en ${pub.platform}: sin enlace`,detail:'Añade la URL para abrir la publicación desde Novelarium.',action:() => openPublication(pub)});
+      if (pub.contractType === 'pending') alerts.push({kind:'warning',title:`${book.title} en ${pub.platform}: contrato por confirmar`,detail:'Revisa la condición contractual.',action:() => openPublication(pub)});
+      if (pub.contractEnd) {
+        const days = daysUntil(pub.contractEnd);
+        if (days >= 0 && days <= 60) alerts.push({kind:'warning',title:`${book.title} en ${pub.platform}: contrato próximo`,detail:`Vence o se renueva en ${days} día${days===1?'':'s'}.`,action:() => openPublication(pub)});
+        if (days < 0 && pub.contractType !== 'ended') alerts.push({kind:'warning',title:`${book.title} en ${pub.platform}: vigencia vencida`,detail:'Actualiza el contrato o márcalo como finalizado.',action:() => openPublication(pub)});
+      }
+      if (pub.status === 'serializing' && pub.lastUpdate) {
+        const days = Math.floor((now - new Date(`${pub.lastUpdate}T00:00:00`)) / 86400000);
+        if (days > 14) alerts.push({kind:'warning',title:`${book.title} en ${pub.platform}: actualización antigua`,detail:`Última actualización registrada hace ${days} días.`,action:() => openPublication(pub)});
+      }
+      if (Number.isFinite(pub.publishedChapters) && Number.isFinite(pub.totalChapters) && pub.totalChapters > 0 && pub.publishedChapters > pub.totalChapters) {
+        alerts.push({kind:'warning',title:`${book.title} en ${pub.platform}: capítulos inconsistentes`,detail:'Los capítulos publicados superan el total registrado.',action:() => openPublication(pub)});
+      }
+    });
+
+    const byBookLanguage = new Map();
+    data.publications.filter(isLivePublication).forEach(pub => {
+      const key = `${pub.bookId}::${(pub.language || '').toLowerCase()}`;
+      if (!byBookLanguage.has(key)) byBookLanguage.set(key,[]);
+      byBookLanguage.get(key).push(pub);
+    });
+    byBookLanguage.forEach(pubs => {
+      const exclusive = pubs.find(p => p.contractType === 'exclusive');
+      if (exclusive && pubs.length > 1) {
+        const book = bookById(exclusive.bookId);
+        if (book && bookMatchesGlobal(book)) alerts.push({
+          kind:'critical', title:`Posible solapamiento exclusivo: ${book.title}`,
+          detail:`${exclusive.platform} figura como exclusiva y hay ${pubs.length-1} publicación${pubs.length-1===1?'':'es'} adicional${pubs.length-1===1?'':'es'} en el mismo idioma. Revisa alcance y vigencia.`,
+          action:() => { setView('publications'); $('#publicationSearch').value = book.title; renderAll(); }
+        });
+      }
+    });
+    return alerts;
+  }
+
+  function renderMetrics() {
+    const books = filteredBooks().filter(b => !b.archived);
+    const active = books.filter(isActiveBook);
+    const visibleBookIds = new Set(books.map(b => b.id));
+    const publications = data.publications.filter(p => visibleBookIds.has(p.bookId) && !p.archived);
+    const alerts = buildAlerts();
+    const metrics = [
+      {label:'OBRAS',value:books.length,sub:'en el catálogo',color:'#f3d9e6',action:"showCatalog('all')"},
+      {label:'ACTIVAS',value:active.length,sub:'requieren trabajo',color:'#f7e1d2',action:"showCatalog('active')"},
+      {label:'PUBLICACIONES',value:publications.length,sub:'registros de plataforma',color:'#ddefe7',action:"showPublications('all')"},
+      {label:'ALERTAS',value:alerts.length,sub:'requieren revisión',color:'#f8efcf',action:"focusAlerts()"}
+    ];
+    $('#metricsGrid').innerHTML = metrics.map(m => `<button class="card metric metric-button" onclick="window.Novelarium.${m.action}"><span class="metric-dot" style="background:${m.color}"></span><span><span class="metric-label">${m.label}</span><span class="metric-value">${m.value}</span><span class="metric-sub">${m.sub}</span></span></button>`).join('');
+  }
+
+  function renderAttention() {
+    const alerts = buildAlerts();
+    $('#attentionList').innerHTML = alerts.length ? alerts.slice(0,8).map((item,index) => `<button class="attention-item ${item.kind}" style="width:100%;text-align:left" onclick="window.Novelarium.openAlert(${index})"><strong>${esc(item.title)}</strong><span>${esc(item.detail)}</span></button>`).join('') : '<div class="empty"><strong>Todo bajo control</strong>No hay alertas operativas con los filtros actuales.</div>';
+    window._novelariumAlerts = alerts;
+  }
+
+  function renderMilestones() {
+    const milestones = [];
+    filteredBooks().filter(b => !b.archived && b.targetDate).forEach(book => milestones.push({date:book.targetDate,title:book.title,detail:'Fecha objetivo de la obra',action:() => openBook(book)}));
+    data.tasks.filter(t => !t.archived && t.status !== 'done' && t.date).forEach(task => {
+      const book = bookById(task.bookId);
+      if (!book || bookMatchesGlobal(book)) milestones.push({date:task.date,title:task.title,detail:book?.title || 'Tarea general',action:() => openTask(task)});
+    });
+    milestones.sort((a,b) => a.date.localeCompare(b.date));
+    $('#milestoneList').innerHTML = milestones.length ? milestones.slice(0,6).map((item,index) => `<button class="milestone-item" style="width:100%;text-align:left" onclick="window.Novelarium.openMilestone(${index})"><strong>${esc(item.title)}</strong><span>${fmtDate(item.date)} · ${esc(item.detail)}</span></button>`).join('') : '<div class="empty"><strong>Sin hitos próximos</strong>Añade fechas objetivo o tareas.</div>';
+    window._novelariumMilestones = milestones;
+  }
+
+  function renderStatusChart() {
+    const books = filteredBooks().filter(b => !b.archived);
+    const max = Math.max(1,...BOOK_STATUS.map(s => books.filter(b => b.status === s.id).length));
+    $('#statusChart').innerHTML = BOOK_STATUS.map(status => {
+      const count = books.filter(b => b.status === status.id).length;
+      return `<button class="chart-action" onclick="window.Novelarium.showCatalog('${status.id}')"><span class="chart-row"><label>${status.label}</label><span class="bar-track"><span class="bar-fill" style="width:${count/max*100}%;background:${status.color};display:block"></span></span><span class="chart-count">${count}</span></span></button>`;
+    }).join('');
+  }
+
+  function bookActionMenu(book) {
+    const archiveLabel = book.archived ? 'Restaurar obra' : 'Archivar obra';
+    return `<details class="menu"><summary aria-label="Más acciones">⋯</summary><div class="menu-panel">
+      <button onclick="window.Novelarium.editBook('${book.id}')">Editar obra</button>
+      <button onclick="window.Novelarium.addPublicationForBook('${book.id}')">Añadir publicación</button>
+      <button onclick="window.Novelarium.viewBookPublications('${book.id}')">Ver publicaciones</button>
+      <button onclick="window.Novelarium.addTaskForBook('${book.id}')">Añadir tarea</button>
+      <button class="danger-text" onclick="window.Novelarium.toggleBookArchive('${book.id}')">${archiveLabel}</button>
+    </div></details>`;
+  }
+
+  function renderActiveProjects() {
+    const books = filteredBooks().filter(isActiveBook).sort((a,b) => (a.targetDate || '9999').localeCompare(b.targetDate || '9999')).slice(0,6);
+    $('#activeProjects').innerHTML = books.length ? books.map((book,index) => {
+      const pen = penById(book.penNameId);
+      const status = statusInfo(book.status);
+      const pubCount = data.publications.filter(p => p.bookId === book.id && !p.archived).length;
+      return `<article class="card project-card"><div class="project-top"><div class="cover-placeholder" style="background:${pen?.color || '#ddd'}22;border:1px solid ${pen?.color || '#ddd'}55">${index+1}</div><div style="min-width:0;flex:1"><span class="pill" style="background:${status.color};color:#513a63">${status.label.toUpperCase()}</span><h3 style="margin-top:9px">${esc(book.title)}</h3><div class="project-meta">${esc(pen?.name || 'Sin seudónimo')}${book.genre?' · '+esc(book.genre):''} · ${pubCount} plataforma${pubCount===1?'':'s'}</div></div>${bookActionMenu(book)}</div><div class="progress"><span style="width:${Math.min(100,Math.max(0,Number(book.progress)||0))}%"></span></div><div class="project-meta">${Number(book.progress)||0}% completado</div><p class="project-note">${esc(book.nextAction || 'Sin siguiente acción definida')}</p><div class="actions"><button class="btn soft small" onclick="window.Novelarium.editBook('${book.id}')">Abrir</button><button class="btn secondary small" onclick="window.Novelarium.advanceBook('${book.id}')">Avanzar fase</button><button class="btn secondary small" onclick="window.Novelarium.addPublicationForBook('${book.id}')">+ Plataforma</button></div></article>`;
+    }).join('') : '<div class="empty" style="grid-column:1/-1"><strong>No hay proyectos activos</strong>Las obras terminadas permanecen en el catálogo y sus publicaciones continúan controlándose por separado.</div>';
+  }
+
+  function visiblePublications() {
+    const visibleBookIds = new Set(filteredBooks().map(b => b.id));
+    return data.publications.filter(p => visibleBookIds.has(p.bookId));
+  }
+
+  function renderDashboardPublications() {
+    const rows = visiblePublications().filter(p => !p.archived).sort((a,b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')).slice(0,7);
+    $('#dashboardPublications').innerHTML = rows.length ? rows.map(pub => {
+      const book = bookById(pub.bookId);
+      return `<tr><td>${esc(book?.title || '')}</td><td>${esc(pub.platform)}</td><td>${esc(pub.displayTitle || book?.title || '')}<br><span style="font-size:10px;color:var(--muted)">${esc(pub.language || '')}</span></td><td><span class="pill" style="background:${pub.contractType==='exclusive'?'#f3d9e6':'#f8f2fb'}">${CONTRACT[pub.contractType] || '—'}</span></td><td>${PUBLICATION_STATUS[pub.status] || '—'}</td><td><div class="actions">${pub.url?`<button class="action-link" onclick="window.Novelarium.openUrl('${pub.id}')">Abrir ↗</button><button class="action-link" onclick="window.Novelarium.copyUrl('${pub.id}')">Copiar</button>`:'—'}<button class="action-link" onclick="window.Novelarium.editPublication('${pub.id}')">Editar</button></div></td></tr>`;
+    }).join('') : '<tr><td colspan="6"><div class="empty"><strong>Sin publicaciones</strong>Añade una plataforma desde una obra o desde Publicaciones.</div></td></tr>';
+  }
+
+  function renderCatalog() {
+    const q = $('#catalogSearch').value || '';
+    const statusFilter = $('#catalogStatusFilter').value || 'all';
+    const archiveFilter = $('#catalogArchiveFilter').value || 'active';
+    let books = filteredBooks(q);
+    books = books.filter(book => {
+      if (archiveFilter === 'active' && book.archived) return false;
+      if (archiveFilter === 'archived' && !book.archived) return false;
+      if (statusFilter === 'active' && !isActiveBook(book)) return false;
+      if (!['all','active'].includes(statusFilter) && book.status !== statusFilter) return false;
+      return true;
+    });
+    $('#catalogGrid').innerHTML = books.length ? books.map(book => {
+      const pen = penById(book.penNameId);
+      const status = statusInfo(book.status);
+      const pubs = data.publications.filter(p => p.bookId === book.id && !p.archived);
+      const platforms = [...new Set(pubs.map(p => p.platform))];
+      return `<article class="card book-card" style="--book-color:${pen?.color || '#76558d'};opacity:${book.archived?.65:1}"><div style="display:flex;justify-content:space-between;gap:12px"><div><h3>${esc(book.title)}</h3><div class="sub">${esc(pen?.name || 'Sin seudónimo')}${book.series?' · '+esc(book.series)+(book.bookNumber?` #${book.bookNumber}`:''):''}</div></div>${bookActionMenu(book)}</div><div class="tags"><span class="tag">${status.label}</span>${book.genre?`<span class="tag">${esc(book.genre)}</span>`:''}<span class="tag">${pubs.length} publicación${pubs.length===1?'':'es'}</span>${book.archived?'<span class="tag">Archivada</span>':''}</div><div class="sub" style="min-height:28px">${platforms.length?esc(platforms.join(' · ')):'Sin plataformas registradas'}</div><div class="progress"><span style="width:${Number(book.progress)||0}%"></span></div><div class="sub">${Number(book.progress)||0}% · ${esc(book.nextAction || 'Sin siguiente acción')}</div><footer><span class="sub">${book.targetDate?fmtDate(book.targetDate):'Sin fecha objetivo'}</span><div class="actions"><button class="btn soft small" onclick="window.Novelarium.editBook('${book.id}')">Editar</button><button class="btn secondary small" onclick="window.Novelarium.addPublicationForBook('${book.id}')">+ Plataforma</button></div></footer></article>`;
+    }).join('') : '<div class="empty" style="grid-column:1/-1"><strong>No hay obras con estos filtros</strong>Ajusta la búsqueda o crea una nueva obra.</div>';
+  }
+
+  function renderPipeline() {
+    const books = filteredBooks().filter(b => !b.archived);
+    $('#pipelineBoard').innerHTML = BOOK_STATUS.map(status => {
+      const list = books.filter(b => b.status === status.id);
+      return `<section class="column"><div class="column-head" style="border-top:4px solid ${status.color}"><span>${status.label}</span><span>${list.length}</span></div><div class="column-body">${list.length ? list.map(book => `<div class="mini-card"><strong>${esc(book.title)}</strong><span>${esc(penById(book.penNameId)?.name || '')}</span><span>${esc(book.nextAction || 'Sin siguiente acción')}</span><select class="inline-select" aria-label="Cambiar estado" onchange="window.Novelarium.changeBookStatus('${book.id}',this.value)">${BOOK_STATUS.map(s => `<option value="${s.id}" ${s.id===book.status?'selected':''}>${s.label}</option>`).join('')}</select><div class="actions" style="margin-top:8px"><button class="btn soft small" onclick="window.Novelarium.editBook('${book.id}')">Editar</button><button class="btn secondary small" onclick="window.Novelarium.addPublicationForBook('${book.id}')">+ Plataforma</button></div></div>`).join('') : '<span style="color:var(--muted);font-size:11px;text-align:center;padding:15px">Sin obras</span>'}</div></section>`;
+    }).join('');
+  }
+
+  function publicationPassesFilters(pub) {
+    const book = bookById(pub.bookId);
+    if (!book || !bookMatchesGlobal(book)) return false;
+    const q = ($('#publicationSearch').value || '').trim().toLowerCase();
+    if (q && ![book.title,penById(book.penNameId)?.name,pub.platform,pub.displayTitle,pub.language,pub.notes].join(' ').toLowerCase().includes(q)) return false;
+    const platform = $('#platformFilter').value || 'all';
+    if (platform !== 'all' && pub.platform !== platform) return false;
+    const contract = $('#contractFilter').value || 'all';
+    if (contract !== 'all' && pub.contractType !== contract) return false;
+    const status = $('#publicationStatusFilter').value || 'all';
+    if (status !== 'all' && pub.status !== status) return false;
+    const special = $('#publicationSpecialFilter').value || 'all';
+    const siblingCount = data.publications.filter(p => p.bookId === pub.bookId && !p.archived).length;
+    if (special === 'multi' && siblingCount < 2) return false;
+    if (special === 'missingUrl' && pub.url) return false;
+    if (special === 'expiring') {
+      const days = daysUntil(pub.contractEnd);
+      if (days === null || days < 0 || days > 60) return false;
+    }
+    if (special === 'serializing' && pub.status !== 'serializing') return false;
+    if (special === 'archived' && !pub.archived) return false;
+    if (special !== 'archived' && pub.archived) return false;
+    return true;
+  }
+
+  function publicationProgress(pub) {
+    const published = Number(pub.publishedChapters);
+    const total = Number(pub.totalChapters);
+    if (Number.isFinite(published) && Number.isFinite(total) && total > 0) return `${published}/${total} caps. · ${Math.min(100,Math.round(published/total*100))}%`;
+    if (Number.isFinite(published) && published >= 0) return `${published} capítulos publicados`;
+    return 'Sin conteo de capítulos';
+  }
+
+  function renderPublications() {
+    const pubs = data.publications.filter(publicationPassesFilters);
+    const groups = new Map();
+    pubs.forEach(pub => {
+      if (!groups.has(pub.bookId)) groups.set(pub.bookId,[]);
+      groups.get(pub.bookId).push(pub);
+    });
+    const sortedGroups = [...groups.entries()].sort((a,b) => (bookById(a[0])?.title || '').localeCompare(bookById(b[0])?.title || '','es'));
+    $('#publicationGroups').innerHTML = sortedGroups.length ? sortedGroups.map(([bookId,list]) => {
+      const book = bookById(bookId);
+      const pen = penById(book?.penNameId);
+      list.sort((a,b) => a.platform.localeCompare(b.platform,'es'));
+      return `<section class="publication-group"><header class="publication-group-head"><div><h3>${esc(book?.title || 'Obra no encontrada')}</h3><p>${esc(pen?.name || '')} · ${list.length} publicación${list.length===1?'':'es'} visible${list.length===1?'':'s'} · ${data.publications.filter(p=>p.bookId===bookId&&!p.archived).length} activa${data.publications.filter(p=>p.bookId===bookId&&!p.archived).length===1?'':'s'} en total</p></div><div class="actions"><button class="btn secondary small" onclick="window.Novelarium.editBook('${bookId}')">Editar obra</button><button class="btn small" onclick="window.Novelarium.addPublicationForBook('${bookId}')">+ Otra plataforma</button></div></header><div class="publication-list">${list.map(pub => `<div class="publication-row ${pub.archived?'archived-row':''}"><div class="publication-cell"><strong>${esc(pub.platform || 'Sin plataforma')}</strong><span>${MONETIZATION[pub.monetization] || 'Por confirmar'}${pub.archived?' · Archivada':''}</span></div><div class="publication-cell"><strong>${esc(pub.displayTitle || book?.title || '')}</strong><span>${esc(pub.language || 'Sin idioma')} · ${publicationProgress(pub)}</span></div><div class="publication-cell"><span class="pill" style="background:${pub.contractType==='exclusive'?'#f3d9e6':pub.contractType==='pending'?'#f8efcf':'#f8f2fb'}">${CONTRACT[pub.contractType] || '—'}</span><span>${fmtDate(pub.contractStart)} → ${fmtDate(pub.contractEnd)}</span></div><div class="publication-cell"><select class="inline-select" onchange="window.Novelarium.changePublicationStatus('${pub.id}',this.value)">${Object.entries(PUBLICATION_STATUS).map(([id,label]) => `<option value="${id}" ${id===pub.status?'selected':''}>${label}</option>`).join('')}</select><span>${pub.lastUpdate?'Actualizada '+fmtDate(pub.lastUpdate):'Sin fecha de actualización'}</span></div><div class="publication-cell">${pub.url?`<button class="action-link" onclick="window.Novelarium.openUrl('${pub.id}')">Abrir ↗</button><button class="action-link" onclick="window.Novelarium.copyUrl('${pub.id}')">Copiar enlace</button>`:'<span>Sin URL</span>'}</div><div class="actions"><button class="btn soft small" onclick="window.Novelarium.editPublication('${pub.id}')">Editar</button><button class="btn secondary small" onclick="window.Novelarium.duplicatePublication('${pub.id}')">Duplicar</button><button class="btn danger small" onclick="window.Novelarium.togglePublicationArchive('${pub.id}')">${pub.archived?'Restaurar':'Archivar'}</button></div></div>`).join('')}</div></section>`;
+    }).join('') : '<div class="empty"><strong>No hay publicaciones con estos filtros</strong>Añade otra plataforma o ajusta los filtros.</div>';
+  }
+
+  function renderTasks() {
+    const filter = $('#taskStatusFilter').value || 'all';
+    const visible = data.tasks.filter(task => {
+      if (task.archived) return false;
+      if (filter !== 'all' && task.status !== filter) return false;
+      const book = bookById(task.bookId);
+      return !book || bookMatchesGlobal(book);
+    }).sort((a,b) => (a.date || '9999').localeCompare(b.date || '9999'));
+    const weekEnd = new Date(); weekEnd.setDate(weekEnd.getDate()+7);
+    const thisWeek = visible.filter(task => task.date && new Date(`${task.date}T23:59:59`) <= weekEnd);
+    const later = visible.filter(task => !thisWeek.includes(task));
+    const html = task => `<div class="task-item"><div style="display:flex;justify-content:space-between;gap:12px"><div><strong>${esc(task.title)}</strong><span>${task.date?fmtDate(task.date):'Sin fecha'} · ${esc(bookById(task.bookId)?.title || 'Tarea general')} · Prioridad ${task.priority==='high'?'alta':task.priority==='low'?'baja':'media'}</span></div><input style="width:20px;height:20px" type="checkbox" ${task.status==='done'?'checked':''} onchange="window.Novelarium.toggleTask('${task.id}',this.checked)" /></div><div class="actions" style="margin-top:8px"><button class="action-link" onclick="window.Novelarium.editTask('${task.id}')">Editar</button><button class="action-link" onclick="window.Novelarium.toggleTaskArchive('${task.id}')">Archivar</button></div></div>`;
+    $('#weekTasks').innerHTML = thisWeek.length ? thisWeek.map(html).join('') : '<div class="empty"><strong>Sin tareas próximas</strong>Añade una tarea o fecha.</div>';
+    $('#laterTasks').innerHTML = later.length ? later.map(html).join('') : '<div class="empty"><strong>Sin tareas posteriores</strong>No hay nada en espera.</div>';
+  }
+
+  function renderPens() {
+    $('#penGrid').innerHTML = data.penNames.map(pen => {
+      const books = data.books.filter(b => b.penNameId === pen.id && !b.archived);
+      const active = books.filter(isActiveBook).length;
+      const publications = data.publications.filter(pub => books.some(b => b.id === pub.bookId) && !pub.archived).length;
+      return `<article class="card pad"><div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:50%;background:${pen.color}"></div><div><h3 style="margin:0">${esc(pen.name)}</h3><div style="font-size:11px;color:var(--muted)">${pen.model==='serial'?'Serializado / multiplataforma':pen.model==='retail'?'Amazon / retail':'Híbrido'} · ${pen.state==='active'?'Activo':pen.state==='paused'?'En pausa':'Archivado'}</div></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0"><span class="tag">${books.length} obra${books.length===1?'':'s'}</span><span class="tag">${active} activa${active===1?'':'s'}</span><span class="tag">${publications} publicación${publications===1?'':'es'}</span></div><div style="font-size:11px;color:var(--muted);min-height:34px">${esc((pen.platforms || []).join(', ') || 'Sin plataformas habituales')}</div><button class="btn soft small" style="margin-top:12px" onclick="window.Novelarium.editPen('${pen.id}')">Editar</button></article>`;
+    }).join('');
+  }
+
+  function renderHistory() {
+    const q = ($('#historySearch').value || '').trim().toLowerCase();
+    const type = $('#historyTypeFilter').value || 'all';
+    const entries = (data.history || []).filter(item => (type === 'all' || item.type === type) && (!q || [item.summary,item.details,item.action,HISTORY_TYPE[item.type]].join(' ').toLowerCase().includes(q)));
+    $('#historyList').innerHTML = entries.length ? entries.slice(0,300).map(item => `<article class="history-item"><div class="history-time">${new Date(item.createdAt).toLocaleString('es-HN')}</div><div class="history-type">${HISTORY_TYPE[item.type] || item.type}<br>${esc(item.action)}</div><div class="history-summary"><strong>${esc(item.summary)}</strong>${item.details?esc(item.details):''}</div></article>`).join('') : '<div class="empty"><strong>Sin historial</strong>Los cambios nuevos aparecerán aquí.</div>';
+  }
+
+  function renderBackupStatus() {
+    $('#backupStatus').innerHTML = `<strong>Versión de datos:</strong> ${data.version}<br><strong>Último guardado:</strong> ${new Date(data.updatedAt).toLocaleString('es-HN')}<br><strong>Registros:</strong> ${data.penNames.length} seudónimos · ${data.books.length} obras · ${data.publications.length} publicaciones · ${data.tasks.length} tareas · ${data.history.length} eventos de historial`;
+  }
+
+  function renderAll() {
+    renderSelectors();
+    renderMetrics();
+    renderAttention();
+    renderMilestones();
+    renderStatusChart();
+    renderActiveProjects();
+    renderDashboardPublications();
+    renderCatalog();
+    renderPipeline();
+    renderPublications();
+    renderTasks();
+    renderPens();
+    renderHistory();
+    renderBackupStatus();
+  }
+
+  function openModal(id) { $(`#${id}`).classList.add('open'); }
+  function closeModal(id) { $(`#${id}`).classList.remove('open'); }
+
+  function openBook(book=null) {
+    $('#bookModalTitle').textContent = book ? 'Editar obra' : 'Añadir obra';
+    $('#bookId').value = book?.id || '';
+    $('#bookTitle').value = book?.title || '';
+    $('#bookPen').value = book?.penNameId || data.penNames[0]?.id || '';
+    $('#bookStatus').value = book?.status || 'idea';
+    $('#bookSeries').value = book?.series || '';
+    $('#bookNumber').value = book?.bookNumber || '';
+    $('#bookStart').value = book?.startDate || '';
+    $('#bookTarget').value = book?.targetDate || '';
+    $('#bookProgress').value = book?.progress || 0;
+    $('#bookGenre').value = book?.genre || '';
+    $('#bookNextAction').value = book?.nextAction || '';
+    $('#bookNotes').value = book?.notes || '';
+    $('#archiveBookBtn').classList.toggle('hidden',!book);
+    $('#archiveBookBtn').textContent = book?.archived ? 'Restaurar obra' : 'Archivar obra';
+    openModal('bookModal');
+  }
+
+  function openPublication(pub=null, presetBookId='') {
+    if (!data.books.some(b => !b.archived)) { alert('Primero crea una obra.'); return; }
+    $('#publicationModalTitle').textContent = pub ? 'Editar publicación' : 'Añadir publicación';
+    $('#publicationId').value = pub?.id || '';
+    $('#publicationBook').value = pub?.bookId || presetBookId || data.books.find(b => !b.archived)?.id || '';
+    $('#publicationPlatform').value = pub?.platform || '';
+    $('#publicationTitle').value = pub?.displayTitle || '';
+    $('#publicationLanguage').value = pub?.language || 'Español';
+    $('#publicationMonetization').value = pub?.monetization || 'unknown';
+    $('#publicationContract').value = pub?.contractType || 'nonexclusive';
+    $('#publicationStatus').value = pub?.status || 'planned';
+    $('#publicationContractStart').value = pub?.contractStart || '';
+    $('#publicationContractEnd').value = pub?.contractEnd || '';
+    $('#publicationPublishedChapters').value = Number.isFinite(pub?.publishedChapters) ? pub.publishedChapters : '';
+    $('#publicationTotalChapters').value = Number.isFinite(pub?.totalChapters) ? pub.totalChapters : '';
+    $('#publicationLastUpdate').value = pub?.lastUpdate || '';
+    $('#publicationUrl').value = pub?.url || '';
+    $('#publicationNotes').value = pub?.notes || '';
+    $('#archivePublicationBtn').classList.toggle('hidden',!pub);
+    $('#archivePublicationBtn').textContent = pub?.archived ? 'Restaurar publicación' : 'Archivar publicación';
+    openModal('publicationModal');
+  }
+
+  function openTask(task=null, presetBookId='') {
+    $('#taskModalTitle').textContent = task ? 'Editar tarea' : 'Añadir tarea';
+    $('#taskId').value = task?.id || '';
+    $('#taskTitle').value = task?.title || '';
+    $('#taskBook').value = task?.bookId || presetBookId || '';
+    $('#taskDate').value = task?.date || '';
+    $('#taskPriority').value = task?.priority || 'medium';
+    $('#taskStatus').value = task?.status || 'pending';
+    $('#taskNotes').value = task?.notes || '';
+    $('#archiveTaskBtn').classList.toggle('hidden',!task);
+    $('#archiveTaskBtn').textContent = task?.archived ? 'Restaurar tarea' : 'Archivar tarea';
+    openModal('taskModal');
+  }
+
+  function openPen(pen=null) {
+    $('#penModalTitle').textContent = pen ? 'Editar seudónimo' : 'Añadir seudónimo';
+    $('#penId').value = pen?.id || '';
+    $('#penName').value = pen?.name || '';
+    $('#penColor').value = pen?.color || '#76558d';
+    $('#penState').value = pen?.state || 'active';
+    $('#penModel').value = pen?.model || 'serial';
+    $('#penPlatforms').value = (pen?.platforms || []).join(', ');
+    $('#deletePenBtn').classList.toggle('hidden',!pen);
+    openModal('penModal');
+  }
+
+  function toggleBookArchive(id) {
+    const book = bookById(id); if (!book) return;
+    book.archived = !book.archived;
+    book.updatedAt = new Date().toISOString();
+    addHistory('book',book.archived?'archivada':'restaurada',book.id,`${book.title} fue ${book.archived?'archivada':'restaurada'}.`);
+    saveData(book.archived ? 'Obra archivada' : 'Obra restaurada');
+    closeModal('bookModal');
+  }
+
+  function togglePublicationArchive(id) {
+    const pub = publicationById(id); if (!pub) return;
+    pub.archived = !pub.archived;
+    pub.updatedAt = new Date().toISOString();
+    const book = bookById(pub.bookId);
+    addHistory('publication',pub.archived?'archivada':'restaurada',pub.id,`${book?.title || 'Publicación'} en ${pub.platform} fue ${pub.archived?'archivada':'restaurada'}.`);
+    saveData(pub.archived ? 'Publicación archivada' : 'Publicación restaurada');
+    closeModal('publicationModal');
+  }
+
+  function toggleTaskArchive(id) {
+    const task = data.tasks.find(t => t.id === id); if (!task) return;
+    task.archived = !task.archived;
+    task.updatedAt = new Date().toISOString();
+    addHistory('task',task.archived?'archivada':'restaurada',task.id,`${task.title} fue ${task.archived?'archivada':'restaurada'}.`);
+    saveData(task.archived ? 'Tarea archivada' : 'Tarea restaurada');
+    closeModal('taskModal');
+  }
+
+  function changeBookStatus(id,status) {
+    const book = bookById(id); if (!book || book.status === status) return;
+    const before = statusInfo(book.status).label;
+    book.status = status;
+    if (status === 'ready') book.progress = 100;
+    book.updatedAt = new Date().toISOString();
+    addHistory('book','cambio de estado',book.id,`${book.title}: ${before} → ${statusInfo(status).label}.`);
+    saveData('Estado editorial actualizado');
+  }
+
+  function advanceBook(id) {
+    const book = bookById(id); if (!book) return;
+    const index = BOOK_STATUS.findIndex(s => s.id === book.status);
+    if (index < 0 || index === BOOK_STATUS.length-1) { toast('La obra ya está en la fase final.'); return; }
+    changeBookStatus(id,BOOK_STATUS[index+1].id);
+  }
+
+  function changePublicationStatus(id,status) {
+    const pub = publicationById(id); if (!pub || pub.status === status) return;
+    const before = PUBLICATION_STATUS[pub.status] || pub.status;
+    pub.status = status;
+    pub.updatedAt = new Date().toISOString();
+    if (['completed','published'].includes(status) && !pub.lastUpdate) pub.lastUpdate = today();
+    const book = bookById(pub.bookId);
+    addHistory('publication','cambio de estado',pub.id,`${book?.title || 'Publicación'} en ${pub.platform}: ${before} → ${PUBLICATION_STATUS[status]}.`);
+    saveData('Estado de publicación actualizado');
+  }
+
+  function duplicatePublication(id) {
+    const pub = publicationById(id); if (!pub) return;
+    openPublication({
+      ...clone(pub), id:'', platform:'', status:'planned', contractStart:'', contractEnd:'', url:'',
+      publishedChapters:null, lastUpdate:'', archived:false
+    });
+    $('#publicationModalTitle').textContent = 'Duplicar en otra plataforma';
+    $('#publicationId').value = '';
+    $('#publicationPlatform').focus();
+  }
+
+  function openUrl(id) {
+    const pub = publicationById(id);
+    if (!pub?.url) { toast('Esta publicación no tiene enlace.'); return; }
+    window.open(pub.url,'_blank','noopener');
+  }
+
+  async function copyUrl(id) {
+    const pub = publicationById(id);
+    if (!pub?.url) { toast('Esta publicación no tiene enlace.'); return; }
+    try {
+      await navigator.clipboard.writeText(pub.url);
+    } catch {
+      const input = document.createElement('textarea'); input.value = pub.url; document.body.appendChild(input); input.select(); document.execCommand('copy'); input.remove();
+    }
+    toast('Enlace copiado');
+  }
+
+  function toggleTask(id,done) {
+    const task = data.tasks.find(t => t.id === id); if (!task) return;
+    task.status = done ? 'done' : 'pending';
+    task.updatedAt = new Date().toISOString();
+    addHistory('task',done?'completada':'reabierta',task.id,`${task.title} fue ${done?'completada':'reabierta'}.`);
+    saveData(done ? 'Tarea completada' : 'Tarea reabierta');
+  }
+
+  function exportBackup() {
+    addHistory('backup','exportado','backup',`Se exportó un respaldo con ${data.books.length} obras y ${data.publications.length} publicaciones.`);
+    data.updatedAt = new Date().toISOString();
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+    downloadBlob(JSON.stringify(data,null,2),`novelarium-respaldo-${today()}.json`,'application/json');
+    renderAll();
+    toast('Respaldo descargado');
+  }
+
+  function csvEscape(value) {
+    const text = String(value ?? '');
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g,'""')}"` : text;
+  }
+
+  function downloadCsv(rows,filename) {
+    const text = '\ufeff' + rows.map(row => row.map(csvEscape).join(',')).join('\n');
+    downloadBlob(text,filename,'text/csv;charset=utf-8');
+  }
+
+  function downloadBlob(content,filename,type) {
+    const blob = new Blob([content],{type});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href),500);
+  }
+
+  function exportBooksCsv() {
+    const rows = [['Título','Seudónimo','Estado editorial','Serie','Número','Inicio','Fecha objetivo','Progreso','Subgénero','Siguiente acción','Archivada']];
+    data.books.forEach(book => rows.push([book.title,penById(book.penNameId)?.name,statusInfo(book.status).label,book.series,book.bookNumber,book.startDate,book.targetDate,book.progress,book.genre,book.nextAction,book.archived?'Sí':'No']));
+    downloadCsv(rows,`novelarium-obras-${today()}.csv`); toast('CSV de obras descargado');
+  }
+
+  function exportPublicationsCsv() {
+    const rows = [['Obra','Seudónimo','Plataforma','Título usado','Idioma','Monetización','Contrato','Inicio contrato','Fin/renovación','Estado','Capítulos publicados','Total capítulos','Última actualización','URL','Archivada']];
+    data.publications.forEach(pub => { const book=bookById(pub.bookId); rows.push([book?.title,penById(book?.penNameId)?.name,pub.platform,pub.displayTitle||book?.title,pub.language,MONETIZATION[pub.monetization],CONTRACT[pub.contractType],pub.contractStart,pub.contractEnd,PUBLICATION_STATUS[pub.status],pub.publishedChapters,pub.totalChapters,pub.lastUpdate,pub.url,pub.archived?'Sí':'No']); });
+    downloadCsv(rows,`novelarium-publicaciones-${today()}.csv`); toast('CSV de publicaciones descargado');
+  }
+
+  $('#bookForm').addEventListener('submit',event => {
+    event.preventDefault();
+    const id = $('#bookId').value || uid('book');
+    const old = bookById(id);
+    const item = {
+      id, title:$('#bookTitle').value.trim(), penNameId:$('#bookPen').value, status:$('#bookStatus').value,
+      series:$('#bookSeries').value.trim(), bookNumber:$('#bookNumber').value ? Number($('#bookNumber').value) : null,
+      startDate:$('#bookStart').value, targetDate:$('#bookTarget').value, progress:Number($('#bookProgress').value) || 0,
+      genre:$('#bookGenre').value.trim(), nextAction:$('#bookNextAction').value.trim(), notes:$('#bookNotes').value.trim(),
+      archived:old?.archived || false, createdAt:old?.createdAt || new Date().toISOString(), updatedAt:new Date().toISOString()
+    };
+    data.books = old ? data.books.map(book => book.id === id ? item : book) : [...data.books,item];
+    addHistory('book',old?'actualizada':'creada',id,`${item.title} fue ${old?'actualizada':'creada'}.`,old && old.status !== item.status ? `${statusInfo(old.status).label} → ${statusInfo(item.status).label}` : '');
+    saveData(old ? 'Obra actualizada' : 'Obra creada');
+    closeModal('bookModal');
+  });
+
+  $('#publicationForm').addEventListener('submit',event => {
+    event.preventDefault();
+    const id = $('#publicationId').value || uid('pub');
+    const old = publicationById(id);
+    const numberOrNull = value => value === '' ? null : Number(value);
+    const item = {
+      id, bookId:$('#publicationBook').value, platform:$('#publicationPlatform').value.trim(), displayTitle:$('#publicationTitle').value.trim(),
+      language:$('#publicationLanguage').value.trim(), monetization:$('#publicationMonetization').value,
+      contractType:$('#publicationContract').value, status:$('#publicationStatus').value,
+      contractStart:$('#publicationContractStart').value, contractEnd:$('#publicationContractEnd').value,
+      publishedChapters:numberOrNull($('#publicationPublishedChapters').value), totalChapters:numberOrNull($('#publicationTotalChapters').value),
+      lastUpdate:$('#publicationLastUpdate').value, url:$('#publicationUrl').value.trim(), notes:$('#publicationNotes').value.trim(),
+      archived:old?.archived || false, createdAt:old?.createdAt || new Date().toISOString(), updatedAt:new Date().toISOString()
+    };
+    data.publications = old ? data.publications.map(pub => pub.id === id ? item : pub) : [...data.publications,item];
+    const book = bookById(item.bookId);
+    addHistory('publication',old?'actualizada':'creada',id,`${book?.title || 'Publicación'} en ${item.platform} fue ${old?'actualizada':'creada'}.`,`${CONTRACT[item.contractType]} · ${PUBLICATION_STATUS[item.status]}`);
+    saveData(old ? 'Publicación actualizada' : 'Publicación añadida');
+    closeModal('publicationModal');
+  });
+
+  $('#taskForm').addEventListener('submit',event => {
+    event.preventDefault();
+    const id = $('#taskId').value || uid('task');
+    const old = data.tasks.find(task => task.id === id);
+    const item = { id,title:$('#taskTitle').value.trim(),bookId:$('#taskBook').value,date:$('#taskDate').value,priority:$('#taskPriority').value,status:$('#taskStatus').value,notes:$('#taskNotes').value.trim(),archived:old?.archived||false,createdAt:old?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString() };
+    data.tasks = old ? data.tasks.map(task => task.id === id ? item : task) : [...data.tasks,item];
+    addHistory('task',old?'actualizada':'creada',id,`${item.title} fue ${old?'actualizada':'creada'}.`);
+    saveData(old ? 'Tarea actualizada' : 'Tarea creada');
+    closeModal('taskModal');
+  });
+
+  $('#penForm').addEventListener('submit',event => {
+    event.preventDefault();
+    const id = $('#penId').value || uid('pen');
+    const old = penById(id);
+    const item = { id,name:$('#penName').value.trim(),color:$('#penColor').value,state:$('#penState').value,model:$('#penModel').value,platforms:$('#penPlatforms').value.split(',').map(v => v.trim()).filter(Boolean) };
+    data.penNames = old ? data.penNames.map(p => p.id === id ? item : p) : [...data.penNames,item];
+    addHistory('pen',old?'actualizado':'creado',id,`${item.name} fue ${old?'actualizado':'creado'}.`);
+    saveData(old ? 'Seudónimo actualizado' : 'Seudónimo creado');
+    closeModal('penModal');
+  });
+
+  $('#archiveBookBtn').addEventListener('click',() => toggleBookArchive($('#bookId').value));
+  $('#archivePublicationBtn').addEventListener('click',() => togglePublicationArchive($('#publicationId').value));
+  $('#archiveTaskBtn').addEventListener('click',() => toggleTaskArchive($('#taskId').value));
+  $('#deletePenBtn').addEventListener('click',() => {
+    const id = $('#penId').value; if (!id) return;
+    if (data.books.some(book => book.penNameId === id)) { alert('No puedes eliminar un seudónimo con obras asignadas.'); return; }
+    const pen = penById(id);
+    if (confirm(`¿Eliminar el seudónimo ${pen?.name || ''}?`)) {
+      data.penNames = data.penNames.filter(p => p.id !== id);
+      addHistory('pen','eliminado',id,`${pen?.name || 'Seudónimo'} fue eliminado.`);
+      saveData('Seudónimo eliminado'); closeModal('penModal');
+    }
+  });
+
+  $('#exportBackupBtn').addEventListener('click',exportBackup);
+  $('#quickBackup').addEventListener('click',exportBackup);
+  $('#exportBooksCsvBtn').addEventListener('click',exportBooksCsv);
+  $('#exportPublicationsCsvBtn').addEventListener('click',exportPublicationsCsv);
+  $('#importBackupInput').addEventListener('change',async event => {
+    const file = event.target.files?.[0]; if (!file) return;
+    try {
+      const incoming = migrate(JSON.parse(await file.text()));
+      downloadBlob(JSON.stringify(data,null,2),`novelarium-copia-previa-${today()}.json`,'application/json');
+      if (confirm('Se creó una copia previa. ¿Reemplazar los datos actuales con el respaldo seleccionado?')) {
+        data = incoming;
+        addHistory('backup','restaurado','backup',`Se restauró el respaldo ${file.name}.`);
+        saveData('Respaldo restaurado');
+      }
+    } catch (error) {
+      console.error(error); alert('El archivo no es un respaldo válido de Novelarium.');
+    } finally { event.target.value = ''; }
+  });
+
+  $$('.nav-btn').forEach(button => button.addEventListener('click',() => setView(button.dataset.view)));
+  $$('[data-close]').forEach(button => button.addEventListener('click',() => closeModal(button.dataset.close)));
+  $$('.modal-backdrop').forEach(modal => modal.addEventListener('click',event => { if (event.target === modal) closeModal(modal.id); }));
+  $('#quickAddBook').addEventListener('click',() => openBook());
+  $('#quickAddPublication').addEventListener('click',() => openPublication());
+  $('#addBookBtn').addEventListener('click',() => openBook());
+  $('#addPublicationBtn').addEventListener('click',() => openPublication());
+  $('#addTaskBtn').addEventListener('click',() => openTask());
+  $('#addPenBtn').addEventListener('click',() => openPen());
+
+  ['globalPenFilter','catalogStatusFilter','catalogArchiveFilter','platformFilter','contractFilter','publicationStatusFilter','publicationSpecialFilter','taskStatusFilter','historyTypeFilter'].forEach(id => $(`#${id}`).addEventListener('change',renderAll));
+  ['globalSearch','catalogSearch','publicationSearch','historySearch'].forEach(id => $(`#${id}`).addEventListener('input',renderAll));
+
+  window.Novelarium = {
+    editBook:id => openBook(bookById(id)),
+    editPublication:id => openPublication(publicationById(id)),
+    editTask:id => openTask(data.tasks.find(t => t.id === id)),
+    editPen:id => openPen(penById(id)),
+    addPublicationForBook:id => openPublication(null,id),
+    addTaskForBook:id => openTask(null,id),
+    viewBookPublications:id => { setView('publications'); $('#publicationSearch').value = bookById(id)?.title || ''; renderAll(); },
+    duplicatePublication,
+    toggleBookArchive,
+    togglePublicationArchive,
+    toggleTaskArchive,
+    changeBookStatus,
+    advanceBook,
+    changePublicationStatus,
+    openUrl,
+    copyUrl,
+    toggleTask,
+    showCatalog:status => { setView('catalog'); $('#catalogStatusFilter').value = status; $('#catalogArchiveFilter').value = 'active'; renderAll(); },
+    showPublications:special => { setView('publications'); $('#publicationSpecialFilter').value = special; renderAll(); },
+    focusAlerts:() => { setView('dashboard'); setTimeout(() => document.querySelector('.attention-list')?.scrollIntoView({behavior:'smooth',block:'center'}),50); },
+    openAlert:index => window._novelariumAlerts?.[index]?.action(),
+    openMilestone:index => window._novelariumMilestones?.[index]?.action()
+  };
+
+  $('#lastSavedText').textContent = data.updatedAt ? `Último guardado: ${new Date(data.updatedAt).toLocaleString('es-HN')}` : 'Sin cambios todavía';
+  renderAll();
+})();
+
+</script>
+</body>
+</html>

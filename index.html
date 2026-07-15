@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Novelarium v0.2 · Control editorial</title>
-  <meta name="description" content="Panel local de control editorial para seudónimos, obras, publicaciones y planificación." />
+  <title>Novelarium v0.3 · Control editorial y planificación</title>
+  <meta name="description" content="Panel local de control editorial para seudónimos, obras, series, publicaciones y planificación trimestral." />
   <style>
     :root {
       --bg: #fbf8fc;
@@ -315,6 +315,37 @@
       .history-item { grid-template-columns:1fr; }
       .span-2 { grid-column: auto; }
     }
+
+    /* ===== V0.3: fichas, series y agenda ===== */
+    .detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .detail-block{background:var(--panel-soft);border:1px solid var(--line);border-radius:14px;padding:14px}
+    .detail-block h4{margin:0 0 9px;color:var(--primary-dark);font-size:13px}
+    .detail-block p{margin:0;color:var(--muted);font-size:12px;white-space:pre-wrap}
+    .stage-stepper{display:grid;grid-template-columns:repeat(9,minmax(72px,1fr));gap:5px;overflow-x:auto;padding-bottom:6px}
+    .stage-step{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 6px;text-align:center;font-size:10px;color:var(--muted);min-width:72px}
+    .stage-step.done{background:#eee2f4;color:var(--primary-dark);border-color:#cfbadd}
+    .stage-step.current{background:var(--primary);color:#fff;border-color:var(--primary);font-weight:800}
+    .trope-list{display:flex;gap:7px;flex-wrap:wrap}
+    .trope-chip{border:1px solid #e1c9d8;background:#fff7fb;color:#6e425f;border-radius:99px;padding:5px 9px;font-size:10px;font-weight:700}
+    .series-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+    .series-card{padding:18px;position:relative;overflow:hidden}
+    .series-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--series-color,var(--primary))}
+    .series-books{display:grid;gap:8px;margin-top:12px}
+    .series-book{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding-top:8px;font-size:11px}
+    .plan-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .plan-tab{border:1px solid var(--line);background:#fff;color:var(--primary-dark);padding:8px 13px;border-radius:99px;font-weight:700}
+    .plan-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .plan-panel{display:none}.plan-panel.active{display:block}
+    .time-blocks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .time-block-card{border-left:5px solid var(--primary);background:#fff;border-radius:13px;border-top:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:13px}
+    .time-block-card strong{font-size:12px}.time-block-card span{display:block;color:var(--muted);font-size:10px;margin:3px 0 8px}
+    .goal-card{padding:17px}.goal-card h3{margin:0 0 12px;font-size:15px;color:var(--primary-dark)}
+    .goal-progress{height:9px;background:#efe8f1;border-radius:99px;overflow:hidden;margin-top:10px}.goal-progress span{height:100%;display:block;background:var(--primary)}
+    .milestone-row{display:grid;grid-template-columns:minmax(0,1fr) 130px 130px auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff;margin-bottom:8px}
+    .book-open{cursor:pointer}.book-open:hover{text-decoration:underline;color:var(--primary)}
+    .field-help{font-size:10px;color:var(--muted);font-weight:500}
+    @media(max-width:900px){.detail-grid,.series-grid,.time-blocks{grid-template-columns:1fr}.milestone-row{grid-template-columns:1fr}.stage-stepper{grid-template-columns:repeat(9,88px)}}
+
   </style>
 </head>
 <body>
@@ -328,6 +359,7 @@
       <nav class="nav" aria-label="Navegación principal">
         <button class="nav-btn active" data-view="dashboard"><span class="nav-icon">⌂</span>Inicio</button>
         <button class="nav-btn" data-view="catalog"><span class="nav-icon">▦</span>Catálogo</button>
+        <button class="nav-btn" data-view="series"><span class="nav-icon">≋</span>Series</button>
         <button class="nav-btn" data-view="pipeline"><span class="nav-icon">↳</span>Pipeline</button>
         <button class="nav-btn" data-view="publications"><span class="nav-icon">◎</span>Publicaciones</button>
         <button class="nav-btn" data-view="planning"><span class="nav-icon">✓</span>Planificación</button>
@@ -363,6 +395,8 @@
       <div class="content">
         <section class="view active" id="view-dashboard">
           <div class="grid cols-4" id="metricsGrid"></div>
+          <div class="section-head"><div><h2>Trimestre actual</h2><p>Escritura, publicación, marketing e ingresos.</p></div><button class="btn secondary small" onclick="window.Novelarium.openQuarterPlanner()">Abrir planificación</button></div>
+          <div class="grid cols-4" id="quarterSnapshot"></div>
 
           <div class="section-head">
             <div><h2>Atención inmediata</h2><p>Primero lo que requiere una decisión, una fecha o una acción.</p></div>
@@ -398,6 +432,17 @@
           <div class="catalog-grid" id="catalogGrid"></div>
         </section>
 
+
+        <section class="view" id="view-series">
+          <div class="toolbar">
+            <input class="grow" id="seriesSearch" placeholder="Buscar serie" />
+            <select id="seriesStatusFilter"><option value="all">Todos los estados</option><option value="planning">Planificación</option><option value="active">Activa</option><option value="complete">Completa</option><option value="paused">Pausada</option></select>
+            <button class="btn" id="addSeriesBtn">+ Añadir serie</button>
+          </div>
+          <div class="notice">Una serie es una entidad independiente. Sus obras mantienen su propia ficha, orden, tropos, publicaciones y tareas.</div>
+          <div class="series-grid" id="seriesGrid" style="margin-top:16px"></div>
+        </section>
+
         <section class="view" id="view-pipeline">
           <div class="notice">El pipeline muestra el <strong>estado editorial de la obra</strong>. Las publicaciones y sus contratos se controlan por separado.</div>
           <div class="pipeline" id="pipelineBoard" style="margin-top:16px"></div>
@@ -431,23 +476,61 @@
         </section>
 
         <section class="view" id="view-planning">
-          <div class="toolbar">
-            <select id="taskStatusFilter">
-              <option value="all">Todas las tareas</option>
-              <option value="pending">Pendientes</option>
-              <option value="done">Completadas</option>
-            </select>
-            <button class="btn" id="addTaskBtn">+ Añadir tarea</button>
+          <div class="plan-tabs">
+            <button class="plan-tab active" data-plan-tab="today">Hoy</button>
+            <button class="plan-tab" data-plan-tab="week">Semana</button>
+            <button class="plan-tab" data-plan-tab="month">Mes</button>
+            <button class="plan-tab" data-plan-tab="quarter">Trimestre</button>
           </div>
-          <div class="grid cols-2">
-            <div class="card pad">
-              <h2 style="margin-top:0;font-size:18px">Esta semana</h2>
-              <div class="task-list" id="weekTasks"></div>
+
+          <div class="plan-panel active" id="plan-today">
+            <div class="grid cols-2">
+              <div class="card pad">
+                <h2 style="margin-top:0;font-size:18px">Control de hoy</h2>
+                <div class="form-grid">
+                  <label>Fecha<input id="dailyDate" type="date" /></label>
+                  <label>Palabras escritas<input id="dailyWords" type="number" min="0" step="100" /></label>
+                  <label class="span-2">Prioridad número uno<input id="dailyPriority" placeholder="La acción que no debe quedar pendiente" /></label>
+                  <label class="span-2">¿Qué funcionó?<textarea id="dailyWorked"></textarea></label>
+                  <label class="span-2">¿Qué no funcionó?<textarea id="dailyDidnt"></textarea></label>
+                </div>
+                <button class="btn" id="saveDailyBtn" style="margin-top:12px">Guardar día</button>
+              </div>
+              <div class="card pad">
+                <h2 style="margin-top:0;font-size:18px">Resumen del día</h2>
+                <div id="dailySummary"></div>
+              </div>
             </div>
-            <div class="card pad">
-              <h2 style="margin-top:0;font-size:18px">Después</h2>
-              <div class="task-list" id="laterTasks"></div>
+            <div class="section-head"><div><h2>Bloques de trabajo</h2><p>Se guardan por fecha y pueden cambiar cada día.</p></div></div>
+            <div class="time-blocks" id="timeBlocks"></div>
+          </div>
+
+          <div class="plan-panel" id="plan-week">
+            <div class="toolbar">
+              <select id="taskStatusFilter"><option value="all">Todas las tareas</option><option value="pending">Pendientes</option><option value="done">Completadas</option></select>
+              <button class="btn secondary" id="carryTasksBtn">Mover vencidas a hoy</button>
+              <button class="btn" id="addTaskBtn">+ Añadir tarea</button>
             </div>
+            <div class="grid cols-2">
+              <div class="card pad"><h2 style="margin-top:0;font-size:18px">Esta semana</h2><div class="task-list" id="weekTasks"></div></div>
+              <div class="card pad"><h2 style="margin-top:0;font-size:18px">Después</h2><div class="task-list" id="laterTasks"></div></div>
+            </div>
+          </div>
+
+          <div class="plan-panel" id="plan-month">
+            <div class="toolbar">
+              <input id="milestoneTitle" class="grow" placeholder="Nuevo hito mensual" />
+              <input id="milestoneDate" type="date" style="width:auto" />
+              <select id="milestoneBook" style="width:auto"></select>
+              <select id="milestoneSeries" style="width:auto"></select>
+              <button class="btn" id="addMilestoneBtn">Añadir hito</button>
+            </div>
+            <div class="card pad"><div id="monthlyMilestones"></div></div>
+          </div>
+
+          <div class="plan-panel" id="plan-quarter">
+            <div class="toolbar"><select id="quarterSelect"><option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option></select><input id="quarterYear" type="number" min="2020" max="2100" style="width:120px" /><button class="btn" id="saveQuarterBtn">Guardar trimestre</button></div>
+            <div class="grid cols-2" id="quarterGoals"></div>
           </div>
         </section>
 
@@ -494,18 +577,56 @@
             <label class="span-2">Título de la obra<input id="bookTitle" required /></label>
             <label>Seudónimo<select id="bookPen" required></select></label>
             <label>Estado editorial<select id="bookStatus" required></select></label>
-            <label>Serie<input id="bookSeries" placeholder="Opcional" /></label>
+            <label>Formato<select id="bookFormat"><option value="standalone">Autoconclusiva</option><option value="series">Serie</option><option value="spinoff">Spin-off</option></select></label>
+            <label>Serie<select id="bookSeriesId"><option value="">Sin serie</option></select></label>
             <label>Número en la serie<input id="bookNumber" type="number" min="1" /></label>
+            <label>Etapa Story Studio<select id="bookStoryStage"></select></label>
             <label>Fecha de inicio<input id="bookStart" type="date" /></label>
             <label>Fecha objetivo / finalización<input id="bookTarget" type="date" /></label>
-            <label>Progreso (%)<input id="bookProgress" type="number" min="0" max="100" value="0" /></label>
-            <label>Subgénero o etiqueta<input id="bookGenre" placeholder="Ej. sport romance" /></label>
+            <label>Progreso general (%)<input id="bookProgress" type="number" min="0" max="100" value="0" /></label>
+            <label>Palabras actuales<input id="bookCurrentWords" type="number" min="0" /></label>
+            <label>Meta de palabras<input id="bookTargetWords" type="number" min="0" /></label>
+            <label>Género<input id="bookGenre" placeholder="Ej. Romance" /></label>
+            <label>Subgénero<input id="bookSubgenre" placeholder="Ej. sport romance" /></label>
+            <label>Nivel de heat<input id="bookHeat" placeholder="Ej. Heat 3 / spicy" /></label>
+            <label>Público / clasificación<input id="bookAudience" placeholder="Ej. Romance adulto" /></label>
+            <label class="span-2">Tropos<span class="field-help">Separados por comas. Se mostrarán como etiquetas.</span><input id="bookTropes" placeholder="Enemies to lovers, proximidad forzada, slow burn" /></label>
+            <label class="span-2">Premisa / propuesta central<textarea id="bookPremise"></textarea></label>
+            <label class="span-2">Enlace al proyecto o Romance Factory<input id="bookProjectUrl" type="url" placeholder="https://…" /></label>
             <label class="span-2">Siguiente acción<input id="bookNextAction" placeholder="Ej. crear brief del capítulo 8" /></label>
-            <label class="span-2">Notas<textarea id="bookNotes"></textarea></label>
+            <label class="span-2">Notas de control<textarea id="bookNotes"></textarea></label>
           </div>
         </div>
         <div class="modal-foot"><button type="button" class="btn danger hidden" id="archiveBookBtn">Archivar obra</button><div style="display:flex;gap:10px;margin-left:auto"><button type="button" class="btn secondary" data-close="bookModal">Cancelar</button><button class="btn" type="submit">Guardar obra</button></div></div>
       </form>
+    </div>
+  </div>
+
+
+  <div class="modal-backdrop" id="seriesModal">
+    <div class="modal" style="max-width:760px">
+      <div class="modal-head"><h3 id="seriesModalTitle">Añadir serie</h3><button class="icon-btn" data-close="seriesModal">✕</button></div>
+      <form id="seriesForm">
+        <div class="modal-body"><input type="hidden" id="seriesId" /><div class="form-grid">
+          <label class="span-2">Nombre de la serie<input id="seriesName" required /></label>
+          <label>Seudónimo<select id="seriesPen" required></select></label>
+          <label>Estado<select id="seriesState"><option value="planning">Planificación</option><option value="active">Activa</option><option value="complete">Completa</option><option value="paused">Pausada</option></select></label>
+          <label>Libros previstos<input id="seriesPlannedBooks" type="number" min="1" /></label>
+          <label>Fecha objetivo<input id="seriesTarget" type="date" /></label>
+          <label class="span-2">Tropos o elementos compartidos<input id="seriesTropes" placeholder="Familia encontrada, pueblo pequeño…" /></label>
+          <label class="span-2">Premisa de la serie / universo compartido<textarea id="seriesPremise"></textarea></label>
+          <label class="span-2">Notas de continuidad<textarea id="seriesNotes"></textarea></label>
+        </div></div>
+        <div class="modal-foot"><button type="button" class="btn danger hidden" id="deleteSeriesBtn">Eliminar serie</button><div style="display:flex;gap:10px;margin-left:auto"><button type="button" class="btn secondary" data-close="seriesModal">Cancelar</button><button class="btn" type="submit">Guardar serie</button></div></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="bookDetailModal">
+    <div class="modal" style="max-width:1120px">
+      <div class="modal-head"><div><h3 id="bookDetailTitle">Ficha de obra</h3><div id="bookDetailSubtitle" style="font-size:11px;color:var(--muted);margin-top:4px"></div></div><button class="icon-btn" data-close="bookDetailModal">✕</button></div>
+      <div class="modal-body" id="bookDetailBody"></div>
+      <div class="modal-foot" id="bookDetailActions"></div>
     </div>
   </div>
 
@@ -598,9 +719,9 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'novelarium_data_v02';
-  const LEGACY_KEYS = ['novelarium_data_v01'];
-  const VERSION = 2;
+  const STORAGE_KEY = 'novelarium_data_v03';
+  const LEGACY_KEYS = ['novelarium_data_v02','novelarium_data_v01'];
+  const VERSION = 3;
 
   const BOOK_STATUS = [
     { id:'idea', label:'Idea', color:'#e8dff2' },
@@ -609,9 +730,18 @@
     { id:'editing', label:'Edición', color:'#f7e1d2' },
     { id:'translation', label:'Traducción', color:'#dde9f7' },
     { id:'formatting', label:'Formato', color:'#f8efcf' },
+    { id:'paused', label:'En pausa', color:'#ece8ee' },
     { id:'ready', label:'Terminada / lista', color:'#ddefe7' }
   ];
   const ACTIVE_BOOK_STATUS = new Set(['idea','planning','drafting','editing','translation','formatting']);
+  const STORY_STAGES = [
+    'Configuración','Concepto y tropos','Personajes','Biblia de la historia','Esquema','Plan de capítulos','Borrador','Edición','Beta y publicación'
+  ];
+  const SERIES_STATUS = { planning:'Planificación', active:'Activa', complete:'Completa', paused:'Pausada' };
+  const GOAL_TYPES = {
+    writing:{label:'Escritura',unit:'palabras'}, publishing:{label:'Publicación',unit:'libros'},
+    marketing:{label:'Marketing',unit:'meta'}, revenue:{label:'Ingresos',unit:'monto'}
+  };
   const PUBLICATION_STATUS = {
     planned:'Por enviar', review:'En revisión', contracted:'Contratada', serializing:'Publicándose',
     completed:'Completada en plataforma', preorder:'Preventa', published:'Publicada retail', paused:'Pausada',
@@ -632,9 +762,26 @@
       { id:'sasha', name:'Sasha Lenox', color:'#6e425f', state:'active', model:'retail', platforms:['Amazon'] },
       { id:'lexi', name:'Lexi Sheridan', color:'#e49ab0', state:'active', model:'retail', platforms:['Amazon'] }
     ],
+    series: [],
     books: [],
     publications: [],
     tasks: [],
+    planner: {
+      selectedQuarter:'Q3', selectedYear:new Date().getFullYear(),
+      goals:{
+        writing:{description:'',target:0,current:0,deadline:''},
+        publishing:{description:'',target:0,current:0,deadline:''},
+        marketing:{description:'',target:0,current:0,deadline:''},
+        revenue:{description:'',target:0,current:0,deadline:''}
+      },
+      milestones:[], daily:{},
+      defaultTimeBlocks:[
+        {id:'create',label:'Crear y decidir',time:'9:00–10:00'},
+        {id:'write',label:'Escribir',time:'10:00–12:00'},
+        {id:'edit',label:'Editar / traducir',time:'14:00–15:30'},
+        {id:'admin',label:'Publicar / administrar',time:'15:30–16:30'}
+      ]
+    },
     history: []
   };
 
@@ -642,6 +789,8 @@
   const $$ = selector => [...document.querySelectorAll(selector)];
   const uid = prefix => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
   const today = () => new Date().toISOString().slice(0,10);
+  const splitTags = value => Array.isArray(value) ? value.filter(Boolean) : String(value || '').split(',').map(v => v.trim()).filter(Boolean);
+  const stageFromStatus = status => ({idea:1,planning:2,drafting:7,editing:8,translation:9,formatting:9,ready:9}[status] || 1);
   const clone = value => JSON.parse(JSON.stringify(value));
   const esc = value => String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
   const fmtDate = iso => iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('es-HN',{day:'2-digit',month:'short',year:'numeric'}) : '—';
@@ -649,6 +798,7 @@
   const bookById = id => data.books.find(book => book.id === id);
   const penById = id => data.penNames.find(pen => pen.id === id);
   const publicationById = id => data.publications.find(pub => pub.id === id);
+  const seriesById = id => data.series.find(item => item.id === id);
   const statusInfo = id => BOOK_STATUS.find(item => item.id === id) || BOOK_STATUS[0];
   const isActiveBook = book => !book.archived && ACTIVE_BOOK_STATUS.has(book.status);
   const isLivePublication = pub => !pub.archived && !['removed','rejected'].includes(pub.status);
@@ -660,22 +810,53 @@
   function migrate(input) {
     const base = clone(seed);
     if (!input || typeof input !== 'object') return base;
+    const oldBooks = Array.isArray(input.books) ? input.books : [];
+    let series = Array.isArray(input.series) ? input.series.map(item => ({
+      id:item.id || uid('series'), name:item.name || 'Serie sin nombre', penNameId:item.penNameId || '',
+      state:item.state || 'planning', plannedBooks:Number(item.plannedBooks)||0, targetDate:item.targetDate || '',
+      tropes:Array.isArray(item.tropes)?item.tropes:splitTags(item.tropes), premise:item.premise || '', notes:item.notes || '',
+      createdAt:item.createdAt || new Date().toISOString(), updatedAt:item.updatedAt || new Date().toISOString()
+    })) : [];
+    const seriesNameMap = new Map(series.map(item => [`${item.penNameId}::${item.name.toLowerCase()}`,item.id]));
+    oldBooks.forEach(book => {
+      if (!book.seriesId && book.series && String(book.series).trim()) {
+        const key = `${book.penNameId || ''}::${String(book.series).trim().toLowerCase()}`;
+        if (!seriesNameMap.has(key)) {
+          const id=uid('series'); seriesNameMap.set(key,id);
+          series.push({id,name:String(book.series).trim(),penNameId:book.penNameId || '',state:'active',plannedBooks:0,targetDate:'',tropes:[],premise:'',notes:'',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+        }
+      }
+    });
+    const plannerInput = input.planner || {};
     const next = {
-      ...base,
-      ...input,
-      version: VERSION,
+      ...base, ...input, version: VERSION, series,
       penNames: Array.isArray(input.penNames) ? input.penNames.map(p => ({
         id:p.id || uid('pen'), name:p.name || 'Sin nombre', color:p.color || '#76558d', state:p.state || 'active',
         model:p.model || 'serial', platforms:Array.isArray(p.platforms) ? p.platforms : []
       })) : base.penNames,
-      books: Array.isArray(input.books) ? input.books.map(b => ({
-        ...b, id:b.id || uid('book'), status:b.status === 'archived' ? 'ready' : (b.status || 'idea'), archived:Boolean(b.archived || b.status === 'archived')
-      })) : [],
+      books: oldBooks.map(b => {
+        let seriesId=b.seriesId || '';
+        if (!seriesId && b.series) seriesId=seriesNameMap.get(`${b.penNameId || ''}::${String(b.series).trim().toLowerCase()}`) || '';
+        return {
+          ...b, id:b.id || uid('book'), status:b.status === 'archived' ? 'ready' : (b.status || 'idea'), archived:Boolean(b.archived || b.status === 'archived'),
+          format:b.format || (seriesId?'series':'standalone'), seriesId, storyStage:Math.min(9,Math.max(1,Number(b.storyStage)||stageFromStatus(b.status))),
+          genre:b.genre || '', subgenre:b.subgenre || '', heat:b.heat || '', audience:b.audience || '', tropes:Array.isArray(b.tropes)?b.tropes:splitTags(b.tropes),
+          premise:b.premise || '', projectUrl:b.projectUrl || '', currentWords:Number(b.currentWords)||0, targetWords:Number(b.targetWords)||0,
+          createdAt:b.createdAt || new Date().toISOString(), updatedAt:b.updatedAt || new Date().toISOString()
+        };
+      }),
       publications: Array.isArray(input.publications) ? input.publications.map(p => ({
         monetization:'unknown', publishedChapters:null, totalChapters:null, lastUpdate:'', archived:false, ...p,
         id:p.id || uid('pub'), contractType:p.contractType || 'pending', status:p.status || 'planned', archived:Boolean(p.archived)
       })) : [],
-      tasks: Array.isArray(input.tasks) ? input.tasks.map(t => ({...t,id:t.id || uid('task'),archived:Boolean(t.archived)})) : [],
+      tasks: Array.isArray(input.tasks) ? input.tasks.map(t => ({...t,id:t.id || uid('task'),seriesId:t.seriesId || '',archived:Boolean(t.archived)})) : [],
+      planner:{
+        ...base.planner, ...plannerInput,
+        goals:{...base.planner.goals,...(plannerInput.goals||{})},
+        milestones:Array.isArray(plannerInput.milestones)?plannerInput.milestones:[],
+        daily:plannerInput.daily && typeof plannerInput.daily==='object'?plannerInput.daily:{},
+        defaultTimeBlocks:Array.isArray(plannerInput.defaultTimeBlocks)?plannerInput.defaultTimeBlocks:base.planner.defaultTimeBlocks
+      },
       history: Array.isArray(input.history) ? input.history : []
     };
     return next;
@@ -727,10 +908,11 @@
     $$('.nav-btn').forEach(button => button.classList.toggle('active', button.dataset.view === view));
     const titles = {
       dashboard:['Panel de control editorial','Una vista clara de tus obras, fechas, contratos y publicaciones.'],
-      catalog:['Catálogo','Obras organizadas por seudónimo, serie, estado y siguiente acción.'],
+      catalog:['Catálogo','Obras organizadas por seudónimo, serie, etapa, tropos y siguiente acción.'],
+      series:['Series','Orden, universo compartido, tropos comunes y avance de cada colección.'],
       pipeline:['Pipeline editorial','Mueve las obras por su fase de producción sin mezclar sus publicaciones.'],
       publications:['Publicaciones','Varias plataformas por obra, con contrato, título, idioma y enlace propios.'],
-      planning:['Planificación','Tareas vinculadas a tus obras y publicaciones.'],
+      planning:['Planificación','Hoy, semana, hitos mensuales y objetivos trimestrales vinculados a obras y series.'],
       history:['Historial','Registro de cambios de estado, publicaciones, tareas y archivo.'],
       backup:['Respaldos','Exporta, restaura o lleva tus datos a Google Drive.'],
       settings:['Seudónimos','Administra tus seudónimos y su modelo principal de publicación.']
@@ -748,13 +930,13 @@
     const q = globalQuery();
     if (!q) return true;
     const pubs = data.publications.filter(p => p.bookId === book.id);
-    const haystack = [book.title,book.series,book.genre,book.nextAction,penById(book.penNameId)?.name,...pubs.flatMap(p => [p.platform,p.displayTitle,p.language])].join(' ').toLowerCase();
+    const haystack = [book.title,seriesById(book.seriesId)?.name,book.genre,book.subgenre,(book.tropes||[]).join(' '),book.premise,book.nextAction,penById(book.penNameId)?.name,...pubs.flatMap(p => [p.platform,p.displayTitle,p.language])].join(' ').toLowerCase();
     return haystack.includes(q);
   }
 
   function filteredBooks(extraQuery='') {
     const q = extraQuery.trim().toLowerCase();
-    return data.books.filter(book => bookMatchesGlobal(book) && (!q || [book.title,book.series,book.genre].join(' ').toLowerCase().includes(q)));
+    return data.books.filter(book => bookMatchesGlobal(book) && (!q || [book.title,seriesById(book.seriesId)?.name,book.genre,book.subgenre,(book.tropes||[]).join(' ')].join(' ').toLowerCase().includes(q)));
   }
 
   function renderSelectors() {
@@ -769,9 +951,18 @@
     $('#catalogStatusFilter').value = currentCatalogStatus;
 
     $('#bookStatus').innerHTML = BOOK_STATUS.map(s => `<option value="${s.id}">${s.label}</option>`).join('');
+    $('#bookStoryStage').innerHTML = STORY_STAGES.map((label,index) => `<option value="${index+1}">${index+1} — ${label}</option>`).join('');
     const currentBookPen = $('#bookPen').value;
     $('#bookPen').innerHTML = data.penNames.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
     if (currentBookPen) $('#bookPen').value = currentBookPen;
+    const currentSeriesId = $('#bookSeriesId').value;
+    $('#bookSeriesId').innerHTML = '<option value="">Sin serie</option>' + data.series.map(item => `<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('');
+    if (currentSeriesId) $('#bookSeriesId').value = currentSeriesId;
+    const currentSeriesPen = $('#seriesPen')?.value;
+    if ($('#seriesPen')) {
+      $('#seriesPen').innerHTML = data.penNames.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+      if (currentSeriesPen) $('#seriesPen').value = currentSeriesPen;
+    }
 
     const currentPublicationBook = $('#publicationBook').value;
     $('#publicationBook').innerHTML = data.books.filter(b => !b.archived).length
@@ -791,6 +982,16 @@
     const platforms = [...new Set(data.publications.map(p => p.platform).filter(Boolean))].sort((a,b) => a.localeCompare(b,'es'));
     $('#platformFilter').innerHTML = '<option value="all">Todas las plataformas</option>' + platforms.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
     $('#platformFilter').value = platforms.includes(platformCurrent) ? platformCurrent : 'all';
+    if ($('#milestoneBook')) {
+      const current=$('#milestoneBook').value;
+      $('#milestoneBook').innerHTML='<option value="">Sin obra</option>'+data.books.filter(b=>!b.archived).map(b=>`<option value="${esc(b.id)}">${esc(b.title)}</option>`).join('');
+      if(current) $('#milestoneBook').value=current;
+    }
+    if ($('#milestoneSeries')) {
+      const current=$('#milestoneSeries').value;
+      $('#milestoneSeries').innerHTML='<option value="">Sin serie</option>'+data.series.map(item=>`<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('');
+      if(current) $('#milestoneSeries').value=current;
+    }
   }
 
   function buildAlerts() {
@@ -835,7 +1036,7 @@
         const book = bookById(exclusive.bookId);
         if (book && bookMatchesGlobal(book)) alerts.push({
           kind:'critical', title:`Posible solapamiento exclusivo: ${book.title}`,
-          detail:`${exclusive.platform} figura como exclusiva y hay ${pubs.length-1} publicación${pubs.length-1===1?'':'es'} adicional${pubs.length-1===1?'':'es'} en el mismo idioma. Revisa alcance y vigencia.`,
+          detail:`${exclusive.platform} figura como exclusiva y hay ${pubs.length-1} ${pubs.length-1===1?'publicación adicional':'publicaciones adicionales'} en el mismo idioma. Revisa alcance y vigencia.`,
           action:() => { setView('publications'); $('#publicationSearch').value = book.title; renderAll(); }
         });
       }
@@ -856,6 +1057,14 @@
       {label:'ALERTAS',value:alerts.length,sub:'requieren revisión',color:'#f8efcf',action:"focusAlerts()"}
     ];
     $('#metricsGrid').innerHTML = metrics.map(m => `<button class="card metric metric-button" onclick="window.Novelarium.${m.action}"><span class="metric-dot" style="background:${m.color}"></span><span><span class="metric-label">${m.label}</span><span class="metric-value">${m.value}</span><span class="metric-sub">${m.sub}</span></span></button>`).join('');
+  }
+
+  function renderQuarterSnapshot() {
+    const quarter=data.planner.selectedQuarter||'Q3', year=data.planner.selectedYear||new Date().getFullYear();
+    $('#quarterSnapshot').innerHTML=Object.entries(GOAL_TYPES).map(([key,meta])=>{
+      const goal=data.planner.goals[key]||{}, target=Number(goal.target)||0, current=Number(goal.current)||0, pct=target?Math.min(100,Math.round(current/target*100)):0;
+      return `<button class="card metric metric-button" onclick="window.Novelarium.openQuarterPlanner()"><span class="metric-dot" style="background:${key==='writing'?'#f3d9e6':key==='publishing'?'#ddefe7':key==='marketing'?'#f8efcf':'#dde9f7'}"></span><span><span class="metric-label">${quarter} ${year} · ${meta.label.toUpperCase()}</span><span class="metric-value">${pct}%</span><span class="metric-sub">${current} de ${target} ${meta.unit}</span></span></button>`;
+    }).join('');
   }
 
   function renderAttention() {
@@ -888,6 +1097,7 @@
   function bookActionMenu(book) {
     const archiveLabel = book.archived ? 'Restaurar obra' : 'Archivar obra';
     return `<details class="menu"><summary aria-label="Más acciones">⋯</summary><div class="menu-panel">
+      <button onclick="window.Novelarium.openBookDetail('${book.id}')">Abrir ficha completa</button>
       <button onclick="window.Novelarium.editBook('${book.id}')">Editar obra</button>
       <button onclick="window.Novelarium.addPublicationForBook('${book.id}')">Añadir publicación</button>
       <button onclick="window.Novelarium.viewBookPublications('${book.id}')">Ver publicaciones</button>
@@ -902,7 +1112,7 @@
       const pen = penById(book.penNameId);
       const status = statusInfo(book.status);
       const pubCount = data.publications.filter(p => p.bookId === book.id && !p.archived).length;
-      return `<article class="card project-card"><div class="project-top"><div class="cover-placeholder" style="background:${pen?.color || '#ddd'}22;border:1px solid ${pen?.color || '#ddd'}55">${index+1}</div><div style="min-width:0;flex:1"><span class="pill" style="background:${status.color};color:#513a63">${status.label.toUpperCase()}</span><h3 style="margin-top:9px">${esc(book.title)}</h3><div class="project-meta">${esc(pen?.name || 'Sin seudónimo')}${book.genre?' · '+esc(book.genre):''} · ${pubCount} plataforma${pubCount===1?'':'s'}</div></div>${bookActionMenu(book)}</div><div class="progress"><span style="width:${Math.min(100,Math.max(0,Number(book.progress)||0))}%"></span></div><div class="project-meta">${Number(book.progress)||0}% completado</div><p class="project-note">${esc(book.nextAction || 'Sin siguiente acción definida')}</p><div class="actions"><button class="btn soft small" onclick="window.Novelarium.editBook('${book.id}')">Abrir</button><button class="btn secondary small" onclick="window.Novelarium.advanceBook('${book.id}')">Avanzar fase</button><button class="btn secondary small" onclick="window.Novelarium.addPublicationForBook('${book.id}')">+ Plataforma</button></div></article>`;
+      return `<article class="card project-card"><div class="project-top"><div class="cover-placeholder" style="background:${pen?.color || '#ddd'}22;border:1px solid ${pen?.color || '#ddd'}55">${index+1}</div><div style="min-width:0;flex:1"><span class="pill" style="background:${status.color};color:#513a63">${status.label.toUpperCase()}</span><h3 style="margin-top:9px">${esc(book.title)}</h3><div class="project-meta">${esc(pen?.name || 'Sin seudónimo')}${book.genre?' · '+esc(book.genre):''} · ${pubCount} plataforma${pubCount===1?'':'s'}</div></div>${bookActionMenu(book)}</div><div class="progress"><span style="width:${Math.min(100,Math.max(0,Number(book.progress)||0))}%"></span></div><div class="project-meta">${Number(book.progress)||0}% completado</div><p class="project-note">${esc(book.nextAction || 'Sin siguiente acción definida')}</p><div class="actions"><button class="btn soft small" onclick="window.Novelarium.openBookDetail('${book.id}')">Abrir ficha</button><button class="btn secondary small" onclick="window.Novelarium.advanceBook('${book.id}')">Avanzar fase</button><button class="btn secondary small" onclick="window.Novelarium.addPublicationForBook('${book.id}')">+ Plataforma</button></div></article>`;
     }).join('') : '<div class="empty" style="grid-column:1/-1"><strong>No hay proyectos activos</strong>Las obras terminadas permanecen en el catálogo y sus publicaciones continúan controlándose por separado.</div>';
   }
 
@@ -932,11 +1142,19 @@
       return true;
     });
     $('#catalogGrid').innerHTML = books.length ? books.map(book => {
-      const pen = penById(book.penNameId);
-      const status = statusInfo(book.status);
-      const pubs = data.publications.filter(p => p.bookId === book.id && !p.archived);
-      const platforms = [...new Set(pubs.map(p => p.platform))];
-      return `<article class="card book-card" style="--book-color:${pen?.color || '#76558d'};opacity:${book.archived?.65:1}"><div style="display:flex;justify-content:space-between;gap:12px"><div><h3>${esc(book.title)}</h3><div class="sub">${esc(pen?.name || 'Sin seudónimo')}${book.series?' · '+esc(book.series)+(book.bookNumber?` #${book.bookNumber}`:''):''}</div></div>${bookActionMenu(book)}</div><div class="tags"><span class="tag">${status.label}</span>${book.genre?`<span class="tag">${esc(book.genre)}</span>`:''}<span class="tag">${pubs.length} publicación${pubs.length===1?'':'es'}</span>${book.archived?'<span class="tag">Archivada</span>':''}</div><div class="sub" style="min-height:28px">${platforms.length?esc(platforms.join(' · ')):'Sin plataformas registradas'}</div><div class="progress"><span style="width:${Number(book.progress)||0}%"></span></div><div class="sub">${Number(book.progress)||0}% · ${esc(book.nextAction || 'Sin siguiente acción')}</div><footer><span class="sub">${book.targetDate?fmtDate(book.targetDate):'Sin fecha objetivo'}</span><div class="actions"><button class="btn soft small" onclick="window.Novelarium.editBook('${book.id}')">Editar</button><button class="btn secondary small" onclick="window.Novelarium.addPublicationForBook('${book.id}')">+ Plataforma</button></div></footer></article>`;
+      const pen = penById(book.penNameId), status=statusInfo(book.status), series=seriesById(book.seriesId);
+      const pubs=data.publications.filter(p=>p.bookId===book.id&&!p.archived), platforms=[...new Set(pubs.map(p=>p.platform))];
+      const stage=STORY_STAGES[(Number(book.storyStage)||1)-1] || STORY_STAGES[0];
+      const tropes=(book.tropes||[]).slice(0,4);
+      const wordPct=book.targetWords?Math.min(100,Math.round((Number(book.currentWords)||0)/Number(book.targetWords)*100)):Number(book.progress)||0;
+      return `<article class="card book-card" style="--book-color:${pen?.color || '#76558d'};opacity:${book.archived?.65:1}">
+        <div style="display:flex;justify-content:space-between;gap:12px"><div><h3 class="book-open" onclick="window.Novelarium.openBookDetail('${book.id}')">${esc(book.title)}</h3><div class="sub">${esc(pen?.name||'Sin seudónimo')}${series?' · '+esc(series.name)+(book.bookNumber?` #${book.bookNumber}`:''):''}</div></div>${bookActionMenu(book)}</div>
+        <div class="tags"><span class="tag">${status.label}</span><span class="tag">Etapa ${book.storyStage||1}: ${esc(stage)}</span>${book.subgenre?`<span class="tag">${esc(book.subgenre)}</span>`:''}<span class="tag">${pubs.length} ${pubs.length===1?'publicación':'publicaciones'}</span>${book.archived?'<span class="tag">Archivada</span>':''}</div>
+        ${tropes.length?`<div class="trope-list">${tropes.map(t=>`<span class="trope-chip">${esc(t)}</span>`).join('')}${(book.tropes||[]).length>4?`<span class="trope-chip">+${book.tropes.length-4}</span>`:''}</div>`:'<div class="sub">Sin tropos registrados</div>'}
+        <div class="sub" style="min-height:28px;margin-top:10px">${platforms.length?esc(platforms.join(' · ')):'Sin plataformas registradas'}</div>
+        <div class="progress"><span style="width:${wordPct}%"></span></div><div class="sub">${book.targetWords?`${Number(book.currentWords)||0} / ${Number(book.targetWords)} palabras`:`${Number(book.progress)||0}%`} · ${esc(book.nextAction||'Sin siguiente acción')}</div>
+        <footer><span class="sub">${book.targetDate?fmtDate(book.targetDate):'Sin fecha objetivo'}</span><div class="actions"><button class="btn soft small" onclick="window.Novelarium.openBookDetail('${book.id}')">Abrir ficha</button><button class="btn secondary small" onclick="window.Novelarium.addPublicationForBook('${book.id}')">+ Plataforma</button></div></footer>
+      </article>`;
     }).join('') : '<div class="empty" style="grid-column:1/-1"><strong>No hay obras con estos filtros</strong>Ajusta la búsqueda o crea una nueva obra.</div>';
   }
 
@@ -993,7 +1211,7 @@
       const book = bookById(bookId);
       const pen = penById(book?.penNameId);
       list.sort((a,b) => a.platform.localeCompare(b.platform,'es'));
-      return `<section class="publication-group"><header class="publication-group-head"><div><h3>${esc(book?.title || 'Obra no encontrada')}</h3><p>${esc(pen?.name || '')} · ${list.length} publicación${list.length===1?'':'es'} visible${list.length===1?'':'s'} · ${data.publications.filter(p=>p.bookId===bookId&&!p.archived).length} activa${data.publications.filter(p=>p.bookId===bookId&&!p.archived).length===1?'':'s'} en total</p></div><div class="actions"><button class="btn secondary small" onclick="window.Novelarium.editBook('${bookId}')">Editar obra</button><button class="btn small" onclick="window.Novelarium.addPublicationForBook('${bookId}')">+ Otra plataforma</button></div></header><div class="publication-list">${list.map(pub => `<div class="publication-row ${pub.archived?'archived-row':''}"><div class="publication-cell"><strong>${esc(pub.platform || 'Sin plataforma')}</strong><span>${MONETIZATION[pub.monetization] || 'Por confirmar'}${pub.archived?' · Archivada':''}</span></div><div class="publication-cell"><strong>${esc(pub.displayTitle || book?.title || '')}</strong><span>${esc(pub.language || 'Sin idioma')} · ${publicationProgress(pub)}</span></div><div class="publication-cell"><span class="pill" style="background:${pub.contractType==='exclusive'?'#f3d9e6':pub.contractType==='pending'?'#f8efcf':'#f8f2fb'}">${CONTRACT[pub.contractType] || '—'}</span><span>${fmtDate(pub.contractStart)} → ${fmtDate(pub.contractEnd)}</span></div><div class="publication-cell"><select class="inline-select" onchange="window.Novelarium.changePublicationStatus('${pub.id}',this.value)">${Object.entries(PUBLICATION_STATUS).map(([id,label]) => `<option value="${id}" ${id===pub.status?'selected':''}>${label}</option>`).join('')}</select><span>${pub.lastUpdate?'Actualizada '+fmtDate(pub.lastUpdate):'Sin fecha de actualización'}</span></div><div class="publication-cell">${pub.url?`<button class="action-link" onclick="window.Novelarium.openUrl('${pub.id}')">Abrir ↗</button><button class="action-link" onclick="window.Novelarium.copyUrl('${pub.id}')">Copiar enlace</button>`:'<span>Sin URL</span>'}</div><div class="actions"><button class="btn soft small" onclick="window.Novelarium.editPublication('${pub.id}')">Editar</button><button class="btn secondary small" onclick="window.Novelarium.duplicatePublication('${pub.id}')">Duplicar</button><button class="btn danger small" onclick="window.Novelarium.togglePublicationArchive('${pub.id}')">${pub.archived?'Restaurar':'Archivar'}</button></div></div>`).join('')}</div></section>`;
+      return `<section class="publication-group"><header class="publication-group-head"><div><h3>${esc(book?.title || 'Obra no encontrada')}</h3><p>${esc(pen?.name || '')} · ${list.length} ${list.length===1?'publicación visible':'publicaciones visibles'} · ${data.publications.filter(p=>p.bookId===bookId&&!p.archived).length} activa${data.publications.filter(p=>p.bookId===bookId&&!p.archived).length===1?'':'s'} en total</p></div><div class="actions"><button class="btn secondary small" onclick="window.Novelarium.editBook('${bookId}')">Editar obra</button><button class="btn small" onclick="window.Novelarium.addPublicationForBook('${bookId}')">+ Otra plataforma</button></div></header><div class="publication-list">${list.map(pub => `<div class="publication-row ${pub.archived?'archived-row':''}"><div class="publication-cell"><strong>${esc(pub.platform || 'Sin plataforma')}</strong><span>${MONETIZATION[pub.monetization] || 'Por confirmar'}${pub.archived?' · Archivada':''}</span></div><div class="publication-cell"><strong>${esc(pub.displayTitle || book?.title || '')}</strong><span>${esc(pub.language || 'Sin idioma')} · ${publicationProgress(pub)}</span></div><div class="publication-cell"><span class="pill" style="background:${pub.contractType==='exclusive'?'#f3d9e6':pub.contractType==='pending'?'#f8efcf':'#f8f2fb'}">${CONTRACT[pub.contractType] || '—'}</span><span>${fmtDate(pub.contractStart)} → ${fmtDate(pub.contractEnd)}</span></div><div class="publication-cell"><select class="inline-select" onchange="window.Novelarium.changePublicationStatus('${pub.id}',this.value)">${Object.entries(PUBLICATION_STATUS).map(([id,label]) => `<option value="${id}" ${id===pub.status?'selected':''}>${label}</option>`).join('')}</select><span>${pub.lastUpdate?'Actualizada '+fmtDate(pub.lastUpdate):'Sin fecha de actualización'}</span></div><div class="publication-cell">${pub.url?`<button class="action-link" onclick="window.Novelarium.openUrl('${pub.id}')">Abrir ↗</button><button class="action-link" onclick="window.Novelarium.copyUrl('${pub.id}')">Copiar enlace</button>`:'<span>Sin URL</span>'}</div><div class="actions"><button class="btn soft small" onclick="window.Novelarium.editPublication('${pub.id}')">Editar</button><button class="btn secondary small" onclick="window.Novelarium.duplicatePublication('${pub.id}')">Duplicar</button><button class="btn danger small" onclick="window.Novelarium.togglePublicationArchive('${pub.id}')">${pub.archived?'Restaurar':'Archivar'}</button></div></div>`).join('')}</div></section>`;
     }).join('') : '<div class="empty"><strong>No hay publicaciones con estos filtros</strong>Añade otra plataforma o ajusta los filtros.</div>';
   }
 
@@ -1013,12 +1231,106 @@
     $('#laterTasks').innerHTML = later.length ? later.map(html).join('') : '<div class="empty"><strong>Sin tareas posteriores</strong>No hay nada en espera.</div>';
   }
 
+  function renderSeries() {
+    const q=($('#seriesSearch').value||'').trim().toLowerCase();
+    const status=$('#seriesStatusFilter').value||'all';
+    const penFilter=currentPenFilter();
+    const list=data.series.filter(item => {
+      if(penFilter!=='all' && item.penNameId!==penFilter) return false;
+      if(status!=='all' && item.state!==status) return false;
+      if(q && ![item.name,item.premise,item.notes,(item.tropes||[]).join(' ')].join(' ').toLowerCase().includes(q)) return false;
+      return true;
+    });
+    $('#seriesGrid').innerHTML=list.length?list.map(item=>{
+      const pen=penById(item.penNameId);
+      const books=data.books.filter(b=>b.seriesId===item.id&&!b.archived).sort((a,b)=>(a.bookNumber||999)-(b.bookNumber||999));
+      return `<article class="card series-card" style="--series-color:${pen?.color||'#76558d'}"><div style="display:flex;justify-content:space-between;gap:10px"><div><h3 style="margin:0">${esc(item.name)}</h3><div class="sub">${esc(pen?.name||'Sin seudónimo')} · ${SERIES_STATUS[item.state]||item.state}</div></div><details class="menu"><summary>⋯</summary><div class="menu-panel"><button onclick="window.Novelarium.editSeries('${item.id}')">Editar serie</button><button onclick="window.Novelarium.addBookToSeries('${item.id}')">Añadir obra</button></div></details></div>
+      <div class="tags"><span class="tag">${books.length} obra${books.length===1?'':'s'}</span>${item.plannedBooks?`<span class="tag">${item.plannedBooks} previstas</span>`:''}${item.targetDate?`<span class="tag">Meta ${fmtDate(item.targetDate)}</span>`:''}</div>
+      ${(item.tropes||[]).length?`<div class="trope-list">${item.tropes.map(t=>`<span class="trope-chip">${esc(t)}</span>`).join('')}</div>`:''}
+      <p style="font-size:12px;color:var(--muted);min-height:38px">${esc(item.premise||'Sin premisa de serie registrada.')}</p>
+      <div class="series-books">${books.length?books.map(book=>`<div class="series-book"><button class="action-link book-open" onclick="window.Novelarium.openBookDetail('${book.id}')">${book.bookNumber?book.bookNumber+'. ':''}${esc(book.title)}</button><span>${statusInfo(book.status).label} · ${book.progress||0}%</span></div>`).join(''):'<div class="empty"><strong>Sin obras vinculadas</strong>Añade la primera obra de la serie.</div>'}</div>
+      <div class="actions" style="margin-top:14px"><button class="btn soft small" onclick="window.Novelarium.editSeries('${item.id}')">Editar</button><button class="btn secondary small" onclick="window.Novelarium.addBookToSeries('${item.id}')">+ Obra</button></div></article>`;
+    }).join(''):'<div class="empty" style="grid-column:1/-1"><strong>No hay series con estos filtros</strong>Crea una serie o ajusta la búsqueda.</div>';
+  }
+
+  function getDaily(date=today()) {
+    if(!data.planner.daily[date]) {
+      data.planner.daily[date]={words:0,priority:'',worked:'',didnt:'',timeBlocks:(data.planner.defaultTimeBlocks||[]).map(b=>({...b,task:''}))};
+    }
+    const day=data.planner.daily[date];
+    if(!Array.isArray(day.timeBlocks)) day.timeBlocks=(data.planner.defaultTimeBlocks||[]).map(b=>({...b,task:''}));
+    return day;
+  }
+
+  function renderPlanner() {
+    const date=$('#dailyDate').value||today();
+    $('#dailyDate').value=date;
+    const day=getDaily(date);
+    $('#dailyWords').value=day.words||0; $('#dailyPriority').value=day.priority||''; $('#dailyWorked').value=day.worked||''; $('#dailyDidnt').value=day.didnt||'';
+    $('#dailySummary').innerHTML=`<div class="detail-grid" style="grid-template-columns:1fr"><div class="detail-block"><h4>Palabras</h4><p>${Number(day.words)||0}</p></div><div class="detail-block"><h4>Prioridad</h4><p>${esc(day.priority||'Sin definir')}</p></div><div class="detail-block"><h4>Balance</h4><p>${esc(day.worked||'Sin reflexión')} ${day.didnt?`\nPendiente de mejorar: ${esc(day.didnt)}`:''}</p></div></div>`;
+    $('#timeBlocks').innerHTML=day.timeBlocks.map((block,index)=>`<div class="time-block-card"><strong>${esc(block.label)}</strong><span>${esc(block.time||'')}</span><input value="${esc(block.task||'')}" placeholder="Tarea de este bloque" onchange="window.Novelarium.updateTimeBlock(${index},this.value)" /></div>`).join('');
+
+    const milestones=(data.planner.milestones||[]).slice().sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
+    $('#monthlyMilestones').innerHTML=milestones.length?milestones.map(item=>{
+      const link=bookById(item.bookId)?.title||seriesById(item.seriesId)?.name||'General';
+      return `<div class="milestone-row"><div><strong>${esc(item.title)}</strong><div class="sub">${esc(link)}</div></div><span>${fmtDate(item.date)}</span><label style="display:flex;grid-auto-flow:column;align-items:center;gap:6px"><input style="width:18px;height:18px" type="checkbox" ${item.done?'checked':''} onchange="window.Novelarium.toggleMilestone('${item.id}',this.checked)" /> Completado</label><button class="btn danger small" onclick="window.Novelarium.deleteMilestone('${item.id}')">Eliminar</button></div>`;
+    }).join(''):'<div class="empty"><strong>Sin hitos mensuales</strong>Añade entregas, inicios, cierres o lanzamientos.</div>';
+
+    $('#quarterSelect').value=data.planner.selectedQuarter||'Q3'; $('#quarterYear').value=data.planner.selectedYear||new Date().getFullYear();
+    $('#quarterGoals').innerHTML=Object.entries(GOAL_TYPES).map(([key,meta])=>{
+      const goal=data.planner.goals[key]||{}; const pct=goal.target?Math.min(100,Math.round((Number(goal.current)||0)/Number(goal.target)*100)):0;
+      return `<div class="card goal-card"><h3>${meta.label}</h3><div class="form-grid"><label class="span-2">Objetivo<textarea data-goal-field="description" data-goal-type="${key}">${esc(goal.description||'')}</textarea></label><label>Meta<input type="number" min="0" data-goal-field="target" data-goal-type="${key}" value="${Number(goal.target)||0}" /></label><label>Actual<input type="number" min="0" data-goal-field="current" data-goal-type="${key}" value="${Number(goal.current)||0}" /></label><label class="span-2">Fecha límite<input type="date" data-goal-field="deadline" data-goal-type="${key}" value="${esc(goal.deadline||'')}" /></label></div><div class="goal-progress"><span style="width:${pct}%"></span></div><div class="sub" style="margin-top:6px">${pct}% · ${Number(goal.current)||0} de ${Number(goal.target)||0} ${meta.unit}</div></div>`;
+    }).join('');
+  }
+
+  function saveDaily() {
+    const date=$('#dailyDate').value||today(), day=getDaily(date);
+    Object.assign(day,{words:Number($('#dailyWords').value)||0,priority:$('#dailyPriority').value.trim(),worked:$('#dailyWorked').value.trim(),didnt:$('#dailyDidnt').value.trim()});
+    addHistory('task','registro diario',date,`Se guardó el control del ${fmtDate(date)}.`,`${day.words} palabras.`); saveData('Día guardado');
+  }
+
+  function updateTimeBlock(index,value) { const day=getDaily($('#dailyDate').value||today()); if(day.timeBlocks[index]) day.timeBlocks[index].task=value; saveData('Bloque actualizado'); }
+  function toggleMilestone(id,done){const item=data.planner.milestones.find(m=>m.id===id);if(!item)return;item.done=done;saveData(done?'Hito completado':'Hito reabierto');}
+  function deleteMilestone(id){data.planner.milestones=data.planner.milestones.filter(m=>m.id!==id);saveData('Hito eliminado');}
+  function carryTasks(){data.tasks.filter(t=>!t.archived&&t.status!=='done'&&t.date&&t.date<today()).forEach(t=>t.date=today());saveData('Tareas vencidas movidas a hoy');}
+
+  function openSeries(item=null) {
+    $('#seriesModalTitle').textContent=item?'Editar serie':'Añadir serie'; $('#seriesId').value=item?.id||''; $('#seriesName').value=item?.name||'';
+    $('#seriesPen').value=item?.penNameId||data.penNames[0]?.id||''; $('#seriesState').value=item?.state||'planning'; $('#seriesPlannedBooks').value=item?.plannedBooks||'';
+    $('#seriesTarget').value=item?.targetDate||''; $('#seriesTropes').value=(item?.tropes||[]).join(', '); $('#seriesPremise').value=item?.premise||''; $('#seriesNotes').value=item?.notes||'';
+    $('#deleteSeriesBtn').classList.toggle('hidden',!item); openModal('seriesModal');
+  }
+
+  function openBookDetail(id) {
+    const book=bookById(id); if(!book)return; const pen=penById(book.penNameId), series=seriesById(book.seriesId), pubs=data.publications.filter(p=>p.bookId===id&&!p.archived), tasks=data.tasks.filter(t=>t.bookId===id&&!t.archived);
+    $('#bookDetailTitle').textContent=book.title; $('#bookDetailSubtitle').textContent=`${pen?.name||'Sin seudónimo'}${series?' · '+series.name+(book.bookNumber?' #'+book.bookNumber:''):''}`;
+    const current=Math.min(9,Math.max(1,Number(book.storyStage)||1));
+    $('#bookDetailBody').innerHTML=`<div class="stage-stepper">${STORY_STAGES.map((label,index)=>`<button class="stage-step ${index+1<current?'done':index+1===current?'current':''}" onclick="window.Novelarium.setStoryStage('${book.id}',${index+1})">${index+1}<br>${esc(label)}</button>`).join('')}</div>
+      <div class="detail-grid" style="margin-top:18px"><div class="detail-block"><h4>Premisa</h4><p>${esc(book.premise||'Sin premisa registrada.')}</p></div><div class="detail-block"><h4>Clasificación</h4><p>${esc([book.genre,book.subgenre,book.heat,book.audience].filter(Boolean).join(' · ')||'Sin clasificación')}</p></div><div class="detail-block"><h4>Producción</h4><p>${statusInfo(book.status).label} · ${book.progress||0}%\n${book.currentWords||0} / ${book.targetWords||0} palabras\nMeta: ${fmtDate(book.targetDate)}</p></div></div>
+      <div class="section-head"><div><h2>Tropos</h2></div></div>${(book.tropes||[]).length?`<div class="trope-list">${book.tropes.map(t=>`<span class="trope-chip">${esc(t)}</span>`).join('')}</div>`:'<div class="empty"><strong>Sin tropos</strong>Edita la obra para añadirlos.</div>'}
+      <div class="section-head"><div><h2>Control</h2></div></div><div class="detail-grid"><div class="detail-block"><h4>Siguiente acción</h4><p>${esc(book.nextAction||'Sin definir')}</p></div><div class="detail-block"><h4>Notas</h4><p>${esc(book.notes||'Sin notas')}</p></div><div class="detail-block"><h4>Proyecto</h4><p>${book.projectUrl?'Enlace disponible':'Sin enlace a Romance Factory o carpeta'}</p></div></div>
+      <div class="section-head"><div><h2>Publicaciones</h2></div></div>${pubs.length?pubs.map(pub=>`<div class="publication-row"><div class="publication-cell"><strong>${esc(pub.platform)}</strong><span>${esc(pub.displayTitle||book.title)}</span></div><div class="publication-cell"><strong>${CONTRACT[pub.contractType]}</strong><span>${PUBLICATION_STATUS[pub.status]}</span></div><div class="actions"><button class="action-link" onclick="window.Novelarium.editPublication('${pub.id}')">Editar</button>${pub.url?`<button class="action-link" onclick="window.Novelarium.openUrl('${pub.id}')">Abrir ↗</button>`:''}</div></div>`).join(''):'<div class="empty"><strong>Sin publicaciones</strong>Añade la primera plataforma.</div>'}
+      <div class="section-head"><div><h2>Planificación vinculada</h2></div></div>${tasks.length?tasks.map(task=>`<div class="task-item"><strong>${esc(task.title)}</strong><span>${task.date?fmtDate(task.date):'Sin fecha'} · ${task.status==='done'?'Completada':'Pendiente'}</span></div>`).join(''):'<div class="empty"><strong>Sin tareas</strong>Añade la siguiente acción operativa.</div>'}`;
+    $('#bookDetailActions').innerHTML=`<button class="btn secondary" onclick="window.Novelarium.editBook('${book.id}')">Editar ficha</button><button class="btn secondary" onclick="window.Novelarium.addTaskForBook('${book.id}')">+ Tarea</button><button class="btn secondary" onclick="window.Novelarium.addPublicationForBook('${book.id}')">+ Plataforma</button><button class="btn secondary" onclick="window.Novelarium.copyBookSummary('${book.id}')">Copiar ficha para IA</button>${book.projectUrl?`<button class="btn" onclick="window.Novelarium.openProject('${book.id}')">Abrir proyecto ↗</button>`:''}`;
+    openModal('bookDetailModal');
+  }
+
+  async function copyBookSummary(id){
+    const book=bookById(id);if(!book)return;const pen=penById(book.penNameId),series=seriesById(book.seriesId),pubs=data.publications.filter(p=>p.bookId===id&&!p.archived);
+    const text=[`NOVELARIUM — FICHA DE OBRA`,`Título: ${book.title}`,`Seudónimo: ${pen?.name||''}`,`Formato: ${book.format||''}`,`Serie: ${series?.name||'No aplica'}${book.bookNumber?' #'+book.bookNumber:''}`,`Estado: ${statusInfo(book.status).label}`,`Etapa: ${book.storyStage||1} — ${STORY_STAGES[(book.storyStage||1)-1]}`,`Género/Subgénero: ${[book.genre,book.subgenre].filter(Boolean).join(' / ')}`,`Tropos: ${(book.tropes||[]).join(', ')}`,`Premisa: ${book.premise||''}`,`Progreso: ${book.currentWords||0}/${book.targetWords||0} palabras; ${book.progress||0}%`,`Siguiente acción: ${book.nextAction||''}`,`Publicaciones: ${pubs.map(p=>`${p.platform} (${PUBLICATION_STATUS[p.status]}, ${CONTRACT[p.contractType]})`).join('; ')}`].join('\n');
+    try{await navigator.clipboard.writeText(text);}catch{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();}toast('Ficha copiada');
+  }
+  function openProject(id){const url=bookById(id)?.projectUrl;if(url)window.open(url,'_blank','noopener');else toast('La obra no tiene enlace de proyecto.');}
+  function openQuarterPlanner(){setView('planning');const button=document.querySelector('[data-plan-tab="quarter"]');button?.click();}
+
+  function setStoryStage(id,stage){const book=bookById(id);if(!book)return;book.storyStage=stage;book.updatedAt=new Date().toISOString();addHistory('book','etapa Story Studio',id,`${book.title}: etapa ${stage} — ${STORY_STAGES[stage-1]}.`);saveData('Etapa actualizada');openBookDetail(id);}
+
   function renderPens() {
     $('#penGrid').innerHTML = data.penNames.map(pen => {
       const books = data.books.filter(b => b.penNameId === pen.id && !b.archived);
       const active = books.filter(isActiveBook).length;
       const publications = data.publications.filter(pub => books.some(b => b.id === pub.bookId) && !pub.archived).length;
-      return `<article class="card pad"><div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:50%;background:${pen.color}"></div><div><h3 style="margin:0">${esc(pen.name)}</h3><div style="font-size:11px;color:var(--muted)">${pen.model==='serial'?'Serializado / multiplataforma':pen.model==='retail'?'Amazon / retail':'Híbrido'} · ${pen.state==='active'?'Activo':pen.state==='paused'?'En pausa':'Archivado'}</div></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0"><span class="tag">${books.length} obra${books.length===1?'':'s'}</span><span class="tag">${active} activa${active===1?'':'s'}</span><span class="tag">${publications} publicación${publications===1?'':'es'}</span></div><div style="font-size:11px;color:var(--muted);min-height:34px">${esc((pen.platforms || []).join(', ') || 'Sin plataformas habituales')}</div><button class="btn soft small" style="margin-top:12px" onclick="window.Novelarium.editPen('${pen.id}')">Editar</button></article>`;
+      return `<article class="card pad"><div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:50%;background:${pen.color}"></div><div><h3 style="margin:0">${esc(pen.name)}</h3><div style="font-size:11px;color:var(--muted)">${pen.model==='serial'?'Serializado / multiplataforma':pen.model==='retail'?'Amazon / retail':'Híbrido'} · ${pen.state==='active'?'Activo':pen.state==='paused'?'En pausa':'Archivado'}</div></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0"><span class="tag">${books.length} obra${books.length===1?'':'s'}</span><span class="tag">${active} activa${active===1?'':'s'}</span><span class="tag">${publications} ${publications===1?'publicación':'publicaciones'}</span></div><div style="font-size:11px;color:var(--muted);min-height:34px">${esc((pen.platforms || []).join(', ') || 'Sin plataformas habituales')}</div><button class="btn soft small" style="margin-top:12px" onclick="window.Novelarium.editPen('${pen.id}')">Editar</button></article>`;
     }).join('');
   }
 
@@ -1030,21 +1342,24 @@
   }
 
   function renderBackupStatus() {
-    $('#backupStatus').innerHTML = `<strong>Versión de datos:</strong> ${data.version}<br><strong>Último guardado:</strong> ${new Date(data.updatedAt).toLocaleString('es-HN')}<br><strong>Registros:</strong> ${data.penNames.length} seudónimos · ${data.books.length} obras · ${data.publications.length} publicaciones · ${data.tasks.length} tareas · ${data.history.length} eventos de historial`;
+    $('#backupStatus').innerHTML = `<strong>Versión de datos:</strong> ${data.version}<br><strong>Último guardado:</strong> ${new Date(data.updatedAt).toLocaleString('es-HN')}<br><strong>Registros:</strong> ${data.penNames.length} seudónimos · ${data.series.length} series · ${data.books.length} obras · ${data.publications.length} publicaciones · ${data.tasks.length} tareas · ${data.history.length} eventos de historial`;
   }
 
   function renderAll() {
     renderSelectors();
     renderMetrics();
+    renderQuarterSnapshot();
     renderAttention();
     renderMilestones();
     renderStatusChart();
     renderActiveProjects();
     renderDashboardPublications();
     renderCatalog();
+    renderSeries();
     renderPipeline();
     renderPublications();
     renderTasks();
+    renderPlanner();
     renderPens();
     renderHistory();
     renderBackupStatus();
@@ -1053,22 +1368,33 @@
   function openModal(id) { $(`#${id}`).classList.add('open'); }
   function closeModal(id) { $(`#${id}`).classList.remove('open'); }
 
-  function openBook(book=null) {
+  function openBook(book=null, presetSeriesId='') {
     $('#bookModalTitle').textContent = book ? 'Editar obra' : 'Añadir obra';
     $('#bookId').value = book?.id || '';
     $('#bookTitle').value = book?.title || '';
-    $('#bookPen').value = book?.penNameId || data.penNames[0]?.id || '';
+    $('#bookPen').value = book?.penNameId || (presetSeriesId?seriesById(presetSeriesId)?.penNameId:'') || data.penNames[0]?.id || '';
     $('#bookStatus').value = book?.status || 'idea';
-    $('#bookSeries').value = book?.series || '';
+    $('#bookFormat').value = book?.format || (presetSeriesId?'series':'standalone');
+    $('#bookSeriesId').value = book?.seriesId || presetSeriesId || '';
     $('#bookNumber').value = book?.bookNumber || '';
+    $('#bookStoryStage').value = book?.storyStage || 1;
     $('#bookStart').value = book?.startDate || '';
     $('#bookTarget').value = book?.targetDate || '';
     $('#bookProgress').value = book?.progress || 0;
+    $('#bookCurrentWords').value = book?.currentWords || 0;
+    $('#bookTargetWords').value = book?.targetWords || 0;
     $('#bookGenre').value = book?.genre || '';
+    $('#bookSubgenre').value = book?.subgenre || '';
+    $('#bookHeat').value = book?.heat || '';
+    $('#bookAudience').value = book?.audience || '';
+    $('#bookTropes').value = (book?.tropes || []).join(', ');
+    $('#bookPremise').value = book?.premise || '';
+    $('#bookProjectUrl').value = book?.projectUrl || '';
     $('#bookNextAction').value = book?.nextAction || '';
     $('#bookNotes').value = book?.notes || '';
     $('#archiveBookBtn').classList.toggle('hidden',!book);
     $('#archiveBookBtn').textContent = book?.archived ? 'Restaurar obra' : 'Archivar obra';
+    closeModal('bookDetailModal');
     openModal('bookModal');
   }
 
@@ -1240,8 +1566,8 @@
   }
 
   function exportBooksCsv() {
-    const rows = [['Título','Seudónimo','Estado editorial','Serie','Número','Inicio','Fecha objetivo','Progreso','Subgénero','Siguiente acción','Archivada']];
-    data.books.forEach(book => rows.push([book.title,penById(book.penNameId)?.name,statusInfo(book.status).label,book.series,book.bookNumber,book.startDate,book.targetDate,book.progress,book.genre,book.nextAction,book.archived?'Sí':'No']));
+    const rows = [['Título','Seudónimo','Estado editorial','Etapa Story Studio','Serie','Número','Inicio','Fecha objetivo','Progreso','Palabras','Meta palabras','Género','Subgénero','Tropos','Siguiente acción','Archivada']];
+    data.books.forEach(book => rows.push([book.title,penById(book.penNameId)?.name,statusInfo(book.status).label,STORY_STAGES[(book.storyStage||1)-1],seriesById(book.seriesId)?.name||'',book.bookNumber,book.startDate,book.targetDate,book.progress,book.currentWords,book.targetWords,book.genre,book.subgenre,(book.tropes||[]).join(' | '),book.nextAction,book.archived?'Sí':'No']));
     downloadCsv(rows,`novelarium-obras-${today()}.csv`); toast('CSV de obras descargado');
   }
 
@@ -1257,9 +1583,12 @@
     const old = bookById(id);
     const item = {
       id, title:$('#bookTitle').value.trim(), penNameId:$('#bookPen').value, status:$('#bookStatus').value,
-      series:$('#bookSeries').value.trim(), bookNumber:$('#bookNumber').value ? Number($('#bookNumber').value) : null,
-      startDate:$('#bookStart').value, targetDate:$('#bookTarget').value, progress:Number($('#bookProgress').value) || 0,
-      genre:$('#bookGenre').value.trim(), nextAction:$('#bookNextAction').value.trim(), notes:$('#bookNotes').value.trim(),
+      format:$('#bookFormat').value, seriesId:$('#bookSeriesId').value, bookNumber:$('#bookNumber').value ? Number($('#bookNumber').value) : null,
+      storyStage:Number($('#bookStoryStage').value)||1, startDate:$('#bookStart').value, targetDate:$('#bookTarget').value,
+      progress:Number($('#bookProgress').value)||0, currentWords:Number($('#bookCurrentWords').value)||0, targetWords:Number($('#bookTargetWords').value)||0,
+      genre:$('#bookGenre').value.trim(), subgenre:$('#bookSubgenre').value.trim(), heat:$('#bookHeat').value.trim(), audience:$('#bookAudience').value.trim(),
+      tropes:splitTags($('#bookTropes').value), premise:$('#bookPremise').value.trim(), projectUrl:$('#bookProjectUrl').value.trim(),
+      nextAction:$('#bookNextAction').value.trim(), notes:$('#bookNotes').value.trim(),
       archived:old?.archived || false, createdAt:old?.createdAt || new Date().toISOString(), updatedAt:new Date().toISOString()
     };
     data.books = old ? data.books.map(book => book.id === id ? item : book) : [...data.books,item];
@@ -1267,6 +1596,17 @@
     saveData(old ? 'Obra actualizada' : 'Obra creada');
     closeModal('bookModal');
   });
+
+
+  $('#seriesForm').addEventListener('submit',event => {
+    event.preventDefault();
+    const id=$('#seriesId').value||uid('series'), old=seriesById(id);
+    const item={id,name:$('#seriesName').value.trim(),penNameId:$('#seriesPen').value,state:$('#seriesState').value,plannedBooks:Number($('#seriesPlannedBooks').value)||0,targetDate:$('#seriesTarget').value,tropes:splitTags($('#seriesTropes').value),premise:$('#seriesPremise').value.trim(),notes:$('#seriesNotes').value.trim(),createdAt:old?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+    data.series=old?data.series.map(s=>s.id===id?item:s):[...data.series,item];
+    addHistory('book',old?'serie actualizada':'serie creada',id,`${item.name} fue ${old?'actualizada':'creada'}.`);
+    saveData(old?'Serie actualizada':'Serie creada'); closeModal('seriesModal');
+  });
+
 
   $('#publicationForm').addEventListener('submit',event => {
     event.preventDefault();
@@ -1314,6 +1654,11 @@
   $('#archiveBookBtn').addEventListener('click',() => toggleBookArchive($('#bookId').value));
   $('#archivePublicationBtn').addEventListener('click',() => togglePublicationArchive($('#publicationId').value));
   $('#archiveTaskBtn').addEventListener('click',() => toggleTaskArchive($('#taskId').value));
+  $('#deleteSeriesBtn').addEventListener('click',() => {
+    const id=$('#seriesId').value;if(!id)return;
+    if(data.books.some(book=>book.seriesId===id)){alert('No puedes eliminar una serie con obras vinculadas. Reasigna primero esas obras.');return;}
+    const item=seriesById(id);if(confirm(`¿Eliminar la serie ${item?.name||''}?`)){data.series=data.series.filter(s=>s.id!==id);saveData('Serie eliminada');closeModal('seriesModal');}
+  });
   $('#deletePenBtn').addEventListener('click',() => {
     const id = $('#penId').value; if (!id) return;
     if (data.books.some(book => book.penNameId === id)) { alert('No puedes eliminar un seudónimo con obras asignadas.'); return; }
@@ -1350,15 +1695,33 @@
   $('#quickAddBook').addEventListener('click',() => openBook());
   $('#quickAddPublication').addEventListener('click',() => openPublication());
   $('#addBookBtn').addEventListener('click',() => openBook());
+  $('#addSeriesBtn').addEventListener('click',() => openSeries());
   $('#addPublicationBtn').addEventListener('click',() => openPublication());
   $('#addTaskBtn').addEventListener('click',() => openTask());
   $('#addPenBtn').addEventListener('click',() => openPen());
+  $('#saveDailyBtn').addEventListener('click',saveDaily);
+  $('#dailyDate').addEventListener('change',renderPlanner);
+  $('#carryTasksBtn').addEventListener('click',carryTasks);
+  $('#addMilestoneBtn').addEventListener('click',() => {
+    const title=$('#milestoneTitle').value.trim(); if(!title){toast('Escribe el hito.');return;}
+    data.planner.milestones.push({id:uid('milestone'),title,date:$('#milestoneDate').value,bookId:$('#milestoneBook').value,seriesId:$('#milestoneSeries').value,done:false});
+    $('#milestoneTitle').value=''; $('#milestoneDate').value=''; saveData('Hito añadido');
+  });
+  $('#saveQuarterBtn').addEventListener('click',() => {
+    data.planner.selectedQuarter=$('#quarterSelect').value; data.planner.selectedYear=Number($('#quarterYear').value)||new Date().getFullYear();
+    $$('[data-goal-type]').forEach(input=>{const type=input.dataset.goalType,field=input.dataset.goalField;if(!data.planner.goals[type])data.planner.goals[type]={};data.planner.goals[type][field]=input.type==='number'?Number(input.value)||0:input.value;});
+    saveData('Objetivos trimestrales guardados');
+  });
+  $$('.plan-tab').forEach(button=>button.addEventListener('click',()=>{const tab=button.dataset.planTab;$$('.plan-tab').forEach(b=>b.classList.toggle('active',b===button));$$('.plan-panel').forEach(p=>p.classList.toggle('active',p.id===`plan-${tab}`));}));
 
-  ['globalPenFilter','catalogStatusFilter','catalogArchiveFilter','platformFilter','contractFilter','publicationStatusFilter','publicationSpecialFilter','taskStatusFilter','historyTypeFilter'].forEach(id => $(`#${id}`).addEventListener('change',renderAll));
-  ['globalSearch','catalogSearch','publicationSearch','historySearch'].forEach(id => $(`#${id}`).addEventListener('input',renderAll));
+  ['globalPenFilter','catalogStatusFilter','catalogArchiveFilter','seriesStatusFilter','platformFilter','contractFilter','publicationStatusFilter','publicationSpecialFilter','taskStatusFilter','historyTypeFilter'].forEach(id => $(`#${id}`).addEventListener('change',renderAll));
+  ['globalSearch','catalogSearch','seriesSearch','publicationSearch','historySearch'].forEach(id => $(`#${id}`).addEventListener('input',renderAll));
 
   window.Novelarium = {
+    openBookDetail,
     editBook:id => openBook(bookById(id)),
+    editSeries:id => openSeries(seriesById(id)),
+    addBookToSeries:id => openBook(null,id),
     editPublication:id => openPublication(publicationById(id)),
     editTask:id => openTask(data.tasks.find(t => t.id === id)),
     editPen:id => openPen(penById(id)),
@@ -1375,6 +1738,13 @@
     openUrl,
     copyUrl,
     toggleTask,
+    setStoryStage,
+    copyBookSummary,
+    openProject,
+    openQuarterPlanner,
+    updateTimeBlock,
+    toggleMilestone,
+    deleteMilestone,
     showCatalog:status => { setView('catalog'); $('#catalogStatusFilter').value = status; $('#catalogArchiveFilter').value = 'active'; renderAll(); },
     showPublications:special => { setView('publications'); $('#publicationSpecialFilter').value = special; renderAll(); },
     focusAlerts:() => { setView('dashboard'); setTimeout(() => document.querySelector('.attention-list')?.scrollIntoView({behavior:'smooth',block:'center'}),50); },
